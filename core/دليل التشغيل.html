@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل تشغيل السيستم</title>
+<style>
+body{margin:0;background:#0A0A0A;color:#F5F3EE;font:16px/1.75 'Segoe UI',Tahoma,sans-serif}
+main{max-width:760px;margin:0 auto;padding:30px 22px 60px}
+h1{color:#F2C230;font-size:30px;margin:0 0 6px}h2{color:#F2C230;font-size:21px;margin:34px 0 8px;border-top:1px solid #262626;padding-top:22px}
+p,li{color:#DDD9CF}ol li{margin:7px 0}b{color:#fff}
+code,.box{background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:2px 7px;direction:ltr;display:inline-block;font-family:Consolas,monospace;font-size:14px}
+.box{display:block;padding:12px 14px;white-space:pre-wrap;direction:rtl;font-family:inherit}
+.note{background:#1d1806;border:1px solid #4a3d0d;border-radius:10px;padding:12px 14px;color:#F2DFA0}
+</style></head><body><main>
+<h1>دليل تشغيل السيستم</h1>
+<p>السيستم 3 حاجات: <b>برنامج على اللابتوب</b> (للحساب الرئيسي وكل الفروع)، <b>موقع للعملاء</b> (للموبايل)، و<b>صفحة متابعة</b> تفتحها من موبايلك زي الأبلكيشن.</p>
+
+<h2>1) جرّب السيستم دلوقتي (من غير أي إعداد)</h2>
+<ol>
+<li>فك ضغط الملف، وادخل فولدر <code>install</code>، ودوس دبل كليك على <code>Install.cmd</code>.</li>
+<li>هيظهر على سطح المكتب أيقونة <b>سيستم البرفيوم</b> وهيفتح لوحده في نافذة لوحده زي أي برنامج.</li>
+<li>اختار <b>تجربة السيستم</b> وادخل بـ <code>admin</code> وكلمة السر <code>123456</code>. لحساب فرع: <code>maadi</code> / <code>123456</code>.</li>
+</ol>
+<p class="note">وضع التجربة على الجهاز ده بس. علشان الفروع تتربط ببعض على النت لازم الخطوة اللي جاية (مرة واحدة بس).</p>
+
+<h2>2) ربط الفروع ببعض على النت (Firebase — مرة واحدة)</h2>
+<ol>
+<li>افتح <code>console.firebase.google.com</code> بحساب جوجل، ودوس <b>Create a project</b>، اكتب أي اسم، واقفل Google Analytics، وكمّل.</li>
+<li>من القايمة: <b>Build ← Realtime Database ← Create database</b>. اختار <b>Belgium (europe-west1)</b>، وبعدين <b>Start in locked mode</b>.</li>
+<li>في نفس الصفحة ادخل تبويب <b>Rules</b>، امسح اللي فيه، والصق كل محتوى الملف <code>firebase/database.rules.json</code>، ودوس <b>Publish</b>.</li>
+<li>من القايمة: <b>Build ← Authentication ← Get started ← Email/Password</b>، فعّل أول اختيار، ودوس <b>Save</b>.</li>
+<li>دوس على الترس جنب <b>Project Overview</b> ← <b>Project settings</b> ← تحت في <b>Your apps</b> دوس علامة <code>&lt;/&gt;</code>، اكتب أي اسم، ودوس <b>Register app</b>. انسخ الكود اللي فيه <code>firebaseConfig</code> كله.</li>
+<li>افتح البرنامج على اللابتوب الرئيسي ← <b>ربط بالسحابة</b> ← الصق الكود ← <b>اربط الجهاز</b> ← اعمل الحساب الرئيسي.</li>
+</ol>
+<p class="note">لو الكود اللي نسخته مفيهوش <code>databaseURL</code>، خد رابط قاعدة البيانات من أول صفحة Realtime Database (بيبدأ بـ https وآخره firebasedatabase.app) وضيفه للكود.</p>
+
+<h2>3) أول حاجة تعملها في الحساب الرئيسي</h2>
+<ol>
+<li><b>المنتجات والأسعار:</b> في كل خانة (فرنساوي، خليجي، أزايز أشكال) ضيف الأحجام وسعر كل حجم، مثلاً 100 مللي و50 مللي و30 مللي. وارفع صورة لكل حجم لو عايزها تظهر على الموقع.</li>
+<li><b>الأوريجينال:</b> ضيف الأحجام، وبعدين ضيف كل منتج أوريجينال عندك بالسعر بتاعه.</li>
+<li><b>الفروع والحسابات:</b> ضيف الفروع، واعمل لكل موظف حساب في فرعه، وحدد كل فرع يشوف إيه.</li>
+<li><b>المخزون ← استلام بضاعة:</b> اكتب عدد الأزايز اللي في كل فرع من كل حجم.</li>
+</ol>
+
+<h2>4) أجهزة الفروع</h2>
+<ol>
+<li>على جهاز الفرع: نفس خطوة التثبيت (Install.cmd).</li>
+<li>في الحساب الرئيسي: <b>الإعدادات ← كود ربط أجهزة الفروع ← نسخ الكود</b>، وابعته للفرع.</li>
+<li>على جهاز الفرع: <b>ربط بالسحابة</b> ← الصق الكود ← سجّل دخول بحساب الموظف.</li>
+</ol>
+<p>كل فرع على أي نت وفي أي مكان. أي بيعة بتظهر عندك في ثواني. ولو النت فصل عند فرع، الفرع بيبيع عادي، والبيانات بتترفع لوحدها أول ما النت يرجع.</p>
+
+<h2>5) الموقع وصفحة المتابعة على الموبايل</h2>
+<ol>
+<li>في البرنامج: تبويب <b>الموقع ← تحميل config.js</b>، وحطه جوه فولدر <code>website</code> مكان الملف اللي فيه.</li>
+<li>افتح شات الكودينج، ارفع فولدر <code>website</code>، وابعتله الرسالة دي:</li>
+</ol>
+<div class="box">ارفع كل الملفات اللي في فولدر website ده على repo جديد في حسابي على GitHub اسمه perfume-shop، على الفرع main في الفولدر الرئيسي، وفعّل GitHub Pages من main / root، وابعتلي لينك الموقع لما يشتغل.</div>
+<ol start="3">
+<li>لينك الموقع ده بيتبعت للعملاء. وحطه في تبويب <b>الموقع ← رابط الموقع</b> في البرنامج.</li>
+<li><b>صفحة المتابعة:</b> نفس اللينك وفي آخره <code>/admin.html</code>. افتحها على موبايلك وادخل بالحساب الرئيسي، وبعدين من قايمة المتصفح اختار <b>Add to Home screen</b>، فهتبقى أيقونة زي الأبلكيشن.</li>
+<li>لو عايز حد تاني يتابع من غير ما يعدّل حاجة: <b>الفروع والحسابات ← حساب متابعة</b>.</li>
+</ol>
+
+<h2>توزيع طلبات الموقع</h2>
+<p>من تبويب <b>الموقع</b>: كل طلب بيروح لفرع واحد بس. تقدر تخليه حسب منطقة العميل، أو يتوزع بالتساوي على فروع تختارها، أو يروح لفرع واحد، أو توزعه انت بإيدك. الفرع اللي بيسلّم الطلب بيتسجل عنده بيعة والأزايز بتتخصم من مخزونه.</p>
+</main></body></html>
