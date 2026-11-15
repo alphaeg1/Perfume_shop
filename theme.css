@@ -1,0 +1,39 @@
+/* Lampika studio theme: light by default, dark when html[data-theme=dark] */
+:root{--ui:'Readex Pro','Segoe UI',Tahoma,sans-serif;--disp:'Readex Pro','Segoe UI',sans-serif}
+html:not([data-theme=dark]){--powder:#F3F4F9;--bg:#F3F4F9;--card:#FFFFFF;--ink:#1C1D2A;--muted:#8B8EA3;--line:#E8E9F1;color-scheme:light;background:#E9EBF3}
+html:not([data-theme=dark]) body{background:#E9EBF3}
+html:not([data-theme=dark]) #shop,html:not([data-theme=dark]) #m{box-shadow:0 0 0 1px var(--line)}
+html:not([data-theme=dark]) .bar,html:not([data-theme=dark]) .chips{background:#F3F4F9e6}
+html:not([data-theme=dark]) .hero h1{color:var(--ink)}
+html:not([data-theme=dark]) .closed{background:#FFF4CC;color:#7A5B00;border-color:#F2DE9A}
+html:not([data-theme=dark]) .vial .tube{background:linear-gradient(90deg,#0000000a,#00000003 40%,#00000008)}
+html:not([data-theme=dark]) .pc,html:not([data-theme=dark]) .k,html:not([data-theme=dark]) .card,html:not([data-theme=dark]) .sz,html:not([data-theme=dark]) .pay,html:not([data-theme=dark]) .sum,html:not([data-theme=dark]) .foot,html:not([data-theme=dark]) .notes div{box-shadow:0 1px 2px rgba(28,29,42,.04),0 4px 16px rgba(28,29,42,.05)}
+html:not([data-theme=dark]) .pc .im{background:radial-gradient(90% 80% at 50% 30%,color-mix(in srgb,var(--c) 22%,#fff),#F6F7FB)}
+html:not([data-theme=dark]) .sh-img{background:radial-gradient(90% 80% at 50% 30%,color-mix(in srgb,var(--c) 25%,#fff),#F6F7FB)}
+html:not([data-theme=dark]) .pc .pr{color:var(--ink)}
+html:not([data-theme=dark]) .grab{background:#D5D7E3}
+html:not([data-theme=dark]) .qty button{background:#F3F4F9}
+html:not([data-theme=dark]) .inp{background:#fff;border-color:var(--line);color:var(--ink)}
+html:not([data-theme=dark]) .inp:focus{border-color:var(--ink);box-shadow:0 0 0 4px rgba(28,29,42,.06)}
+html:not([data-theme=dark]) .step i{border-color:#D5D7E3;background:#fff}
+html:not([data-theme=dark]) .foot .soc a{background:#F3F4F9}
+html:not([data-theme=dark]) .toast{background:var(--ink);border:0}
+html:not([data-theme=dark]) .back,html:not([data-theme=dark]) .modal-back{background:rgba(28,29,42,.35)}
+html:not([data-theme=dark]) .code,html:not([data-theme=dark]) .big-price{color:var(--ink)}
+html:not([data-theme=dark]) select.inp option{background:#fff}
+html:not([data-theme=dark]) .seg{background:#fff;border:1px solid var(--line)}
+html:not([data-theme=dark]) .seg button.on{background:var(--ink);color:#fff}
+html:not([data-theme=dark]) .pill{background:#F3F4F9}
+html:not([data-theme=dark]) .pill.n{background:#FFF4CC;color:#7A5B00}
+html:not([data-theme=dark]) .pill.e{background:#FDECEC}
+html:not([data-theme=dark]) .lo{color:#9A7300}
+html:not([data-theme=dark]) .nav{background:#fff}
+html:not([data-theme=dark]) .nav button.on{color:var(--ink)}
+html:not([data-theme=dark]) .gate{background:#fff;color:var(--ink)}
+html:not([data-theme=dark]) .gate .inp{border:1px solid var(--line)}
+html:not([data-theme=dark]) .modal-foot .primary,html:not([data-theme=dark]) .btn:not(.lt){background:var(--ink);color:#fff;border-color:var(--ink)}
+html:not([data-theme=dark]) .feed div,html:not([data-theme=dark]) td,html:not([data-theme=dark]) .line{border-bottom-color:var(--line)}
+html:not([data-theme=dark]) .ib{color:var(--ink)}
+html:not([data-theme=dark]) .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.th-btn{position:fixed;z-index:70;bottom:calc(92px + env(safe-area-inset-bottom));left:max(14px,calc(50% - 226px));width:42px;height:42px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.12);cursor:pointer}
+html:not([data-theme=dark]) .gate .btn,html:not([data-theme=dark]) .gate button.btn{background:var(--ink);color:#fff}
