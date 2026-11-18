@@ -8,7 +8,8 @@
   var keys = Object.keys(D).filter(function (k) { return k.trim().length >= 2; }).sort(function (a, b) { return b.length - a.length; });
   var esc = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
   var AR = 'ء-ي٠-٩ـ';
-  var RX = new RegExp('(?<![' + AR + '])(' + keys.map(esc).join('|') + ')(?![' + AR + '])', 'g');
+  var RX = new RegExp('(' + keys.map(esc).join('|') + ')', 'g');
+  var isAr = new RegExp('[' + AR + ']');
   var cache = new Map();
   var hasAr = /[؀-ۿ]/;
   function T(s) {
@@ -18,8 +19,11 @@
     var t = s.trim();
     if (D[s]) out = D[s][idx];
     else if (D[t]) out = s.replace(t, D[t][idx]);
-    else out = s.replace(RX, function (m) { return D[m] ? D[m][idx] : m; });
-    if (idx === 1) out = out.replace(/ج(?![ء-ي])/g, 'EGP').replace(/،/g, ',').replace(/؟/g, '?');
+    else out = s.replace(RX, function (m, g, off, str) {
+      if (isAr.test(m[0]) && off > 0 && isAr.test(str[off - 1])) return m;
+      var e = off + m.length; if (isAr.test(m[m.length - 1]) && e < str.length && isAr.test(str[e])) return m;
+      return D[m] ? D[m][idx] : m; });
+    if (idx === 1) out = out.replace(/(\d)\s?م(?![ء-ي])/g, '$1 PM').replace(/(\d)\s?ص(?![ء-ي])/g, '$1 AM').replace(/ج(?![ء-ي])/g, 'EGP').replace(/،/g, ',').replace(/؟/g, '?');
     if (cache.size > 5000) cache.clear();
     cache.set(s, out); return out;
   }
