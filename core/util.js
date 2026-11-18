@@ -102,6 +102,10 @@
 
   // ---------- icons (stroke, 24px) ----------
   const IC = {
+    gift: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18"/><path d="M12 8c-1.5-3-5-4-5.5-1.5S9 8 12 8zM12 8c1.5-3 5-4 5.5-1.5S15 8 12 8z"/>',
+    crown: '<path d="M3 18h18M4 16l-1-9 5 4 4-7 4 7 5-4-1 9z"/>',
+    wa: '<path d="M3 21l1.7-5A9 9 0 1 1 8 19.4z"/><path d="M9 9c0 3.5 2.5 6 6 6l1.2-1.6-2-1-1 1c-1.2-.4-2.2-1.4-2.6-2.6l1-1-1-2z"/>',
+    pct: '<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
     home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
     cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L21 8H6"/>',
     box: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
@@ -131,6 +135,8 @@
     lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 13v8h14v-8"/>',
     bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    sun: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',
     whatsapp: '<path d="M3 21l1.7-5A9 9 0 1 1 8 19.4z"/><path d="M9 9c0 3.5 2.5 6 6 6l1.2-1.6-2-1-1 1c-1.2-.4-2.2-1.4-2.6-2.6l1-1-1-2z"/>',
     star: '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/>',
@@ -260,4 +266,11 @@
     if (val === null || val === undefined) delete n[last];
     else n[last] = val && typeof val === 'object' ? P.clone(val) : val;
   };
+})();
+
+(function () { // theme: light by default, remembered per device
+  const P = window.P; let t = 'light'; try { t = localStorage.getItem('theme') || 'light'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t);
+  P.themeBtn = () => { const b = P.h('button', { class: 'theme-btn', title: 'تغيير الشكل فاتح / غامق' }); const paint = () => { const d = document.documentElement.getAttribute('data-theme') === 'dark'; b.replaceChildren(P.icon(d ? 'sun' : 'moon', 18)); };
+    b.onclick = () => { const d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', d); try { localStorage.setItem('theme', d); } catch (e) {} paint(); }; paint(); return b; };
 })();

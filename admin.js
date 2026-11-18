@@ -5,6 +5,8 @@
   const CFG = window.SHOP_CONFIG || {};
   const M = { tab: 'today', mode: 'day', br: '', anchor: P.dayKey(), sbr: '' };
   const root = () => P.$('#m');
+  const THEME_KEY = 'theme';
+  try { if (localStorage.getItem(THEME_KEY) === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
@@ -20,7 +22,7 @@
   function login() {
     const u = P.input({ dir: 'ltr', placeholder: 'اسم الدخول', autocomplete: 'username', id: 'mu' });
     const pw = P.input({ type: 'password', dir: 'ltr', placeholder: 'كلمة السر', autocomplete: 'current-password', id: 'mp' });
-    const go = h('button', { class: 'btn bl', id: 'mgo', style: { background: 'var(--amber)' }, onclick: async () => {
+    const go = h('button', { class: 'btn bl', id: 'mgo', onclick: async () => {
       go.disabled = true;
       try {
         const name = u.value.trim().toLowerCase();
@@ -35,87 +37,135 @@
         enter(me);
       } catch (e) { P.toast(e.message, 'err'); go.disabled = false; }
     } }, 'دخول');
-    root().replaceChildren(h('div', { class: 'gate' }, P.bottle(0.7, '#F2C230', 46), h('h1', null, 'متابعة الفروع'), h('p', { style: { opacity: 0.8, margin: 0 } }, CFG.dbUrl ? 'ادخل بالحساب الرئيسي أو حساب المتابعة' : 'عرض تجريبي: admin / 123456'), u, pw, go));
+    root().replaceChildren(h('div', { class: 'gate' },
+      h('div', { class: 'gate-mark' }, P.bottle(0.72, '#F2C230', 40)),
+      h('h1', null, 'متابعة الفروع'), h('p', null, CFG.dbUrl ? 'ادخل بالحساب الرئيسي أو حساب المتابعة' : 'عرض تجريبي: admin / 123456'),
+      u, pw, go));
   }
-  async function enter(me) {
-    await S.start(me);
-    S.on(P.debounce(draw, 150));
+  async function enter(me) { await S.start(me); S.on(P.debounce(draw, 150)); draw(); }
+  async function logout() { S.stop(); FB.signOut(); await P.kv.del('m:sess'); await P.kv.del('m:tok'); login(); }
+  function toggleTheme() {
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch (e) {}
     draw();
   }
-  async function logout() { S.stop(); FB.signOut(); await P.kv.del('m:sess'); await P.kv.del('m:tok'); login(); }
+
+  /* ---------- small building blocks ---------- */
+  const money = (x) => h('span', { class: 'num mny' }, P.fmt.n(Math.round(P.num(x))), h('small', null, ' ج'));
+  const pct = (a, b) => (b ? Math.round(((a - b) / b) * 100) : null);
+  const trend = (v) => (v === null ? null : h('span', { class: 'trend ' + (v >= 0 ? 'up' : 'dn') }, (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v) + '%'));
+  const kpi = (l, v, sub) => h('div', { class: 'k' }, h('span', { class: 'kl' }, l), h('b', null, v), sub ? h('small', null, sub) : null);
+  const sec = (t, extra) => h('div', { class: 'h' }, h('span', null, t), extra || null);
+  const nameOf = (it) => (it.k && C.cat(C.parse(it.k).c) ? C.label(it.k).split(' — ').join(' ') : (it.n || '') + (it.sn ? ' ' + it.sn : ''));
+  const short = (k) => { const parts = C.label(k).split(' — '); return parts.length > 1 ? parts.slice(1).join(' ') : parts[0]; };
+  const itemsList = (items) => h('div', { class: 'items' }, P.arr(items).map((it) => h('div', { class: 'it' }, h('span', { class: 'q num' }, '×' + P.num(it.q)), h('span', null, nameOf(it)))));
+  const catDot = (c) => h('i', { class: 'cd', style: { background: C.color(c) } });
 
   function draw() {
     if (!S.me) return;
-    const site = S.get('public/site') || {};
-    document.documentElement.style.setProperty('--plum', site.primary || '#F2C230');
     const open = P.openOrders();
     const newN = open.filter((o) => o.st === 'new' || o.st === 'rej').length;
     const y = scrollY;
     root().replaceChildren(
-      M.tab === 'today' ? today(site) : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : stock(),
-      h('nav', { class: 'nav' }, [['today', 'النهارده'], ['orders', 'الطلبات'], ['rep', 'الجرد'], ['stock', 'المخزون']].map(([k, l]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },
-        P.icon({ today: 'home', orders: 'truck', rep: 'chart', stock: 'box' }[k], 22), l, k === 'orders' && newN ? h('i', null, newN) : null))));
+      M.tab === 'today' ? today() : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : stock(),
+      h('nav', { class: 'nav' }, [['today', 'النهارده', 'home'], ['orders', 'الطلبات', 'truck'], ['rep', 'الجرد', 'chart'], ['stock', 'المخزون', 'box']].map(([k, l, ic]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },
+        h('span', { class: 'ni' }, P.icon(ic, 21), k === 'orders' && newN ? h('i', null, newN) : null), l))));
     scrollTo(0, y);
   }
-  function head(title, big, sub) {
-    const live = S.st.net;
-    return h('div', { class: 'top' }, h('div', { class: 'r' }, h('div', null, h('b', null, (S.get('public/site') || {}).name || ''), h('div', null, h('small', null, title))),
-      h('div', { class: 'row' }, h('span', { class: 'live' + (live ? '' : ' off') }, h('i'), live ? 'لايف' : 'من غير نت'), h('button', { class: 'icon-btn', style: { color: '#fff' }, 'aria-label': 'خروج', onclick: logout }, P.icon('logout', 18)))),
-      big !== undefined ? h('div', { class: 'big num' }, big) : null, sub ? h('div', { class: 'sub' }, sub) : null);
+  function head(title, sub) {
+    const live = S.st.net; const site = S.get('public/site') || {};
+    return h('header', { class: 'top' },
+      h('div', { class: 'r' },
+        h('div', { class: 'who' }, h('b', null, site.name || 'المتابعة'), h('small', null, title)),
+        h('div', { class: 'acts' }, h('span', { class: 'live' + (live ? '' : ' off') }, h('i'), live ? 'لايف' : 'أوفلاين'),
+          h('button', { class: 'ib', 'aria-label': 'الوضع الليلي', onclick: toggleTheme }, P.icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', 18)),
+          h('button', { class: 'ib', 'aria-label': 'خروج', onclick: logout }, P.icon('logout', 18)))),
+      sub || null);
   }
+  const hero = (label, big, ...subs) => h('div', { class: 'hero' }, h('small', null, label), h('div', { class: 'big' }, big), h('div', { class: 'hero-sub' }, subs));
+
+  /* ---------- today ---------- */
   function today() {
-    const d = P.dayKey();
-    const r = P.R.summary(d, d, null);
+    const d = P.dayKey(); const yd = P.addDays(d, -1);
+    const r = P.R.summary(d, d, null); const ry = P.R.summary(yd, yd, null);
     const pres = S.get('presence') || {};
-    return h('div', null, head('مبيعات النهارده في كل الفروع', P.fmt.money(r.rev), `${r.bottles} ازازة — ${r.inv} فاتورة`),
+    const brs = P.branches(); const maxRev = Math.max(1, ...brs.map(([b]) => (r.byBranch[b] || {}).rev || 0));
+    const lim = P.lowLimit(); let low = 0; for (const [b] of brs) { const st = P.stockOf(b); for (const k of C.keys()) if (P.num(st[k]) <= lim) low++; }
+    const liveOffers = C.offers ? C.offers().length : 0;
+    return h('div', null,
+      head(P.fmt.day(d), hero('مبيعات النهارده في كل الفروع', money(r.rev), h('span', null, r.inv + ' فاتورة'), h('span', null, r.bottles + ' قطعة'), trend(pct(r.rev, ry.rev)), ry.rev ? h('span', { class: 'o' }, 'عن امبارح') : null)),
       h('div', { class: 'w' },
-        h('div', { class: 'kp' }, k('متوسط الفاتورة', P.fmt.money(r.avg)), k('طلبات الموقع', r.web), k('كاش', P.fmt.money(r.pay.cash || 0)), k('محافظ وفيزا', P.fmt.money((r.pay.wallet || 0) + (r.pay.card || 0)))),
-        h('div', { class: 'h' }, 'الفروع'),
-        P.branches().map(([b, br]) => {
+        h('div', { class: 'kp' }, kpi('متوسط الفاتورة', money(r.avg)), kpi('طلبات الموقع', r.web, r.webRev ? P.fmt.money(r.webRev) : null), kpi('كاش', money(r.pay.cash || 0)), kpi('محافظ وفيزا', money((r.pay.wallet || 0) + (r.pay.card || 0)))),
+        low || liveOffers ? h('div', { class: 'alerts' },
+          low ? h('button', { class: 'al warn', onclick: () => { M.tab = 'stock'; scrollTo(0, 0); draw(); } }, P.icon('box', 17), h('span', null, h('b', null, low + ' صنف'), ' قرب يخلص في الفروع'), h('span', { class: 'go' }, '‹')) : null,
+          liveOffers ? h('div', { class: 'al' }, P.icon('tag', 17), h('span', null, h('b', null, liveOffers + ' عرض'), ' شغال دلوقتي على الكاشير والموقع')) : null) : null,
+        sec('الفروع'),
+        h('div', { class: 'card list' }, brs.length ? brs.map(([b, br]) => {
           const x = r.byBranch[b] || { rev: 0, inv: 0, bottles: 0 };
           const on = Object.values(pres).some((p) => p && p.b === b && Date.now() - p.ts < 150000);
-          return h('div', { class: 'card' }, h('div', { class: 'br' }, h('b', null, h('span', { class: 'dot' + (on ? ' on' : '') }), br.n), h('span', { class: 'v num' }, P.fmt.money(x.rev))), h('div', { class: 'mut' }, `${x.inv} فاتورة — ${x.bottles} ازازة`));
-        }),
-        h('div', { class: 'h' }, 'آخر المبيعات'),
-        h('div', { class: 'card feed' }, r.sales.length ? r.sales.slice(0, 20).map((s) => h('div', { style: s.void ? { opacity: 0.5 } : null }, P.bottle(0.6, C.color((P.itemsOf(s)[0] || {}).c), 12),
-          h('span', { style: { flex: 1 } }, h('b', null, P.branchName(s.b)), ' ', P.itemsOf(s).map((it) => it.q + '× ' + it.n).join('، '), h('div', { class: 'mut' }, P.fmt.time(s.ts) + ' — ' + (s.bn || '') + (s.void ? ' — ملغية' : ''))),
-          h('b', { class: 'num' }, P.fmt.money(s.tot)))) : h('div', { class: 'empty' }, 'لسه مفيش مبيعات النهارده'))));
+          return h('div', { class: 'brow' },
+            h('div', { class: 'br' }, h('b', null, h('span', { class: 'dot' + (on ? ' on' : '') }), br.n), money(x.rev)),
+            h('div', { class: 'bar' }, h('i', { style: { width: Math.round((x.rev / maxRev) * 100) + '%' } })),
+            h('div', { class: 'mut' }, x.inv + ' فاتورة · ' + x.bottles + ' قطعة' + (on ? ' · فاتح دلوقتي' : '')));
+        }) : h('div', { class: 'empty' }, 'مفيش فروع')),
+        sec('آخر المبيعات', r.sales.length ? h('small', { class: 'mut' }, r.sales.length + ' فاتورة') : null),
+        h('div', { class: 'card list' }, r.sales.length ? r.sales.slice(0, 25).map((s) => h('div', { class: 'sale' + (s.void ? ' void' : '') },
+          h('div', { class: 'br' }, h('div', { class: 'meta' }, catDot((P.itemsOf(s)[0] || {}).c), h('b', null, P.branchName(s.b)), h('span', { class: 'mut' }, P.fmt.time(s.ts) + (s.bn ? ' · ' + s.bn : ''))), s.void ? h('span', { class: 'pill e' }, 'اتلغت') : money(s.tot)),
+          itemsList(P.itemsOf(s)),
+          s.src === 'web' ? h('span', { class: 'pill' }, 'طلب موقع') : null)) : h('div', { class: 'empty' }, 'لسه مفيش مبيعات النهارده'))));
   }
-  const k = (l, v) => h('div', { class: 'k' }, h('span', null, l), h('b', { class: 'num' }, v));
+
+  /* ---------- orders ---------- */
   function orders(open) {
     const canAct = S.isOwner;
-    return h('div', null, head('طلبات الموقع المفتوحة', open.length, open.filter((o) => o.st === 'new').length + ' جديد'),
+    return h('div', null,
+      head('طلبات الموقع', hero('طلبات مفتوحة', h('span', { class: 'num' }, open.length), h('span', null, open.filter((o) => o.st === 'new').length + ' جديد'), h('span', null, open.filter((o) => o.st === 'out').length + ' في الطريق'))),
       h('div', { class: 'w' }, open.length ? open.map((o) => {
         const c = o.c || {};
-        return h('div', { class: 'card' },
-          h('div', { class: 'br' }, h('b', null, '#' + (o.code || '') + ' — ' + (c.n || '')), h('span', { class: 'pill ' + (o.st === 'new' ? 'n' : o.st === 'rej' ? 'e' : '') }, P.ORDER_ST[o.st] || o.st)),
-          h('div', { class: 'mut' }, P.fmt.dt(o.ts) + ' — ' + P.branchName(o.b) + (c.areaN ? ' — ' + c.areaN : '')),
-          h('div', { style: { fontSize: '13.5px', margin: '6px 0' } }, P.arr(o.items).map((it) => it.q + '× ' + it.n + (it.sn ? ' ' + it.sn : '')).join('، ')),
-          h('div', { class: 'br' }, h('b', { class: 'num' }, P.fmt.money(o.tot)), h('a', { class: 'btn lt', href: 'tel:' + (c.ph || '') }, P.icon('phone', 16))),
-          canAct && (o.b === '_inbox' || o.st === 'rej' || o.st === 'new') ? h('select', { class: 'inp', style: { marginTop: '8px' }, onchange: (e) => { if (e.target.value) { P.A.reassignOrder(o.b, o.id, e.target.value); P.toast('اتحول لـ ' + P.branchName(e.target.value)); } } },
+        const wa = String(c.ph || '').replace(/\D/g, '').replace(/^0/, '20');
+        return h('div', { class: 'card ord' },
+          h('div', { class: 'br' }, h('div', null, h('b', null, c.n || 'عميل'), h('div', { class: 'mut num' }, '#' + (o.code || ''))), h('span', { class: 'pill ' + (o.st === 'new' ? 'n' : o.st === 'rej' ? 'e' : '') }, P.ORDER_ST[o.st] || o.st)),
+          h('div', { class: 'mut' }, P.fmt.dt(o.ts) + ' · ' + P.branchName(o.b) + (c.areaN ? ' · ' + c.areaN : '')),
+          itemsList(o.items),
+          h('div', { class: 'br foot' }, money(o.tot), h('div', { class: 'row' }, wa ? h('a', { class: 'btn lt', href: 'https://wa.me/' + wa, target: '_blank', rel: 'noopener' }, 'واتساب') : null, c.ph ? h('a', { class: 'btn', href: 'tel:' + c.ph }, P.icon('phone', 16), 'اتصال') : null)),
+          canAct && (o.b === '_inbox' || o.st === 'rej' || o.st === 'new') ? h('select', { class: 'inp', style: { marginTop: '10px' }, onchange: (e) => { if (e.target.value) { P.A.reassignOrder(o.b, o.id, e.target.value); P.toast('اتحول لـ ' + P.branchName(e.target.value)); } } },
             h('option', { value: '' }, o.b === '_inbox' || o.st === 'rej' ? 'وزّع الطلب على فرع…' : 'حوّله لفرع تاني…'), P.branches().filter(([b]) => b !== o.b).map(([b, br]) => h('option', { value: b }, br.n))) : null);
-      }) : h('div', { class: 'empty' }, 'مفيش طلبات مفتوحة')));
+      }) : h('div', { class: 'card empty' }, P.icon('truck', 26), h('div', null, 'مفيش طلبات مفتوحة دلوقتي'))));
   }
+
+  /* ---------- reports ---------- */
   function reports() {
     const [from, to] = P.rangeOf(M.mode, M.anchor);
     const branches = M.br ? [M.br] : null;
     const r = P.R.summary(from, to, branches);
     const label = M.mode === 'day' ? P.fmt.day(from) : M.mode === 'month' ? P.fmt.month(from.slice(0, 7)) : 'سنة ' + from.slice(0, 4);
     const step = (n) => { const d = P.parseDay(M.anchor); M.anchor = M.mode === 'day' ? P.addDays(M.anchor, n) : M.mode === 'month' ? P.dayKey(new Date(d.getFullYear(), d.getMonth() + n, 1)) : (d.getFullYear() + n) + '-01-01'; draw(); };
-    return h('div', null, head('الجرد — ' + label, P.fmt.money(r.rev), (M.br ? P.branchName(M.br) : 'كل الفروع') + ` — ${r.bottles} ازازة`),
+    const cats = C.cats(true).map(([c, cat]) => ({ c, cat, x: r.byCat[c] || { q: 0, rev: 0, sizes: {} } })).filter((g) => g.x.q || g.x.rev);
+    const maxC = Math.max(1, ...cats.map((g) => g.x.rev));
+    const inv = P.R.inventory(from, to, branches).filter((x) => x.open || x.inn || x.sold || x.close || x.tin || x.tout || x.adj);
+    const invBy = {}; for (const x of inv) { const c = C.parse(x.k).c; (invBy[c] = invBy[c] || []).push(x); }
+    return h('div', null,
+      head('الجرد والتقارير', hero((M.br ? P.branchName(M.br) : 'كل الفروع') + ' — ' + label, money(r.rev), h('span', null, r.inv + ' فاتورة'), h('span', null, r.bottles + ' قطعة'))),
       h('div', { class: 'w' },
-        h('div', { class: 'seg' }, [['day', 'يومي'], ['month', 'شهري'], ['year', 'سنوي']].map(([v, l]) => h('button', { class: M.mode === v ? 'on' : '', onclick: () => { M.mode = v; draw(); } }, l))),
-        h('div', { class: 'row', style: { marginBottom: '10px' } }, h('button', { class: 'btn lt', onclick: () => step(-1) }, 'اللي قبله'),
-          P.select([['', 'كل الفروع']].concat(P.branches().map(([b, br]) => [b, br.n])), M.br, { class: 'inp', onchange: (e) => { M.br = e.target.value; draw(); } }),
-          h('button', { class: 'btn lt', onclick: () => step(1) }, 'اللي بعده')),
-        h('div', { class: 'kp' }, k('فواتير', r.inv), k('متوسط الفاتورة', P.fmt.money(r.avg)), k('طلبات الموقع', r.web + ' — ' + P.fmt.money(r.webRev)), S.isOwner ? k('ربح تقريبي', P.fmt.money(r.profit)) : k('خصومات', P.fmt.money(r.disc))),
-        h('div', { class: 'h' }, 'اتباع إيه'),
-        h('div', { class: 'card' }, h('table', null, C.cats(true).flatMap(([c, cat]) => C.sizes(c, true).map(([s, sz]) => { const x = ((r.byCat[c] || {}).sizes || {})[s] || { q: 0, rev: 0 }; return h('tr', null, h('td', null, cat.n + ' ' + sz.n), h('td', { class: 'n' }, x.q), h('td', { class: 'n' }, P.fmt.money(x.rev))); })))),
-        !M.br && P.branches().length > 1 ? h('div', null, h('div', { class: 'h' }, 'الفروع'), h('div', { class: 'card' }, h('table', null, P.branches().map(([b, br]) => { const x = r.byBranch[b] || { rev: 0, bottles: 0 }; return h('tr', null, h('td', null, br.n), h('td', { class: 'n' }, x.bottles), h('td', { class: 'n' }, P.fmt.money(x.rev))); })))) : null,
-        h('div', { class: 'h' }, 'جرد المخزون'),
-        h('div', { class: 'card' }, h('table', null, h('tr', { class: 'mut' }, h('td', null, 'الصنف'), h('td', { class: 'n' }, 'أول'), h('td', { class: 'n' }, 'وارد'), h('td', { class: 'n' }, 'مباع'), h('td', { class: 'n' }, 'آخر')),
-          P.R.inventory(from, to, branches).filter((x) => x.open || x.inn || x.sold || x.close).map((x) => h('tr', null, h('td', null, C.label(x.k)), h('td', { class: 'n' }, x.open), h('td', { class: 'n' }, x.inn + x.tin + x.tout + x.adj), h('td', { class: 'n' }, x.sold), h('td', { class: 'n' }, h('b', null, x.close))))))));
+        h('div', { class: 'seg' }, [['day', 'يومي'], ['month', 'شهري'], ['year', 'سنوي']].map(([v, l]) => h('button', { class: M.mode === v ? 'on' : '', onclick: () => { M.mode = v; M.anchor = P.dayKey(); draw(); } }, l))),
+        h('div', { class: 'dnav' }, h('button', { class: 'ib b', 'aria-label': 'اللي قبله', onclick: () => step(-1) }, '›'), h('b', null, label), h('button', { class: 'ib b', 'aria-label': 'اللي بعده', onclick: () => step(1) }, '‹')),
+        P.select([['', 'كل الفروع']].concat(P.branches().map(([b, br]) => [b, br.n])), M.br, { class: 'inp', style: { marginBottom: '12px' }, onchange: (e) => { M.br = e.target.value; draw(); } }),
+        h('div', { class: 'kp' }, kpi('متوسط الفاتورة', money(r.avg)), kpi('طلبات الموقع', r.web, r.webRev ? P.fmt.money(r.webRev) : null), S.isOwner ? kpi('ربح تقريبي', money(r.profit)) : kpi('خصومات', money(r.disc)), kpi('فواتير ملغية', r.voided)),
+        sec('اتباع إيه'),
+        h('div', { class: 'card list' }, cats.length ? cats.map((g) => h('div', { class: 'cgrp' },
+          h('div', { class: 'br' }, h('b', null, catDot(g.c), g.cat.n), money(g.x.rev)),
+          h('div', { class: 'bar' }, h('i', { style: { width: Math.round((g.x.rev / maxC) * 100) + '%', background: C.color(g.c) } })),
+          h('div', { class: 'chips' }, Object.entries(g.x.sizes || {}).filter(([, v]) => v.q).map(([s, v]) => h('span', { class: 'chip' }, h('span', null, (C.size(g.c, s) || {}).n || ''), h('b', { class: 'num' }, '×' + v.q)))))) : h('div', { class: 'empty' }, 'مفيش مبيعات في الفترة دي')),
+        !M.br && P.branches().length > 1 ? h('div', null, sec('الفروع'), h('div', { class: 'card list' }, P.branches().map(([b, br]) => { const x = r.byBranch[b] || { rev: 0, bottles: 0, inv: 0 }; return h('div', { class: 'br row-line' }, h('div', null, h('b', null, br.n), h('div', { class: 'mut' }, x.inv + ' فاتورة · ' + x.bottles + ' قطعة')), money(x.rev)); }))) : null,
+        sec('جرد المخزون'),
+        Object.keys(invBy).length ? Object.entries(invBy).map(([c, rows]) => h('div', { class: 'card list' },
+          h('div', { class: 'grp-t' }, catDot(c), (C.cat(c) || {}).n || ''),
+          h('div', { class: 'inv-h' }, h('span', null, 'الصنف'), h('span', null, 'أول'), h('span', null, 'وارد'), h('span', null, 'مباع'), h('span', null, 'آخر')),
+          rows.map((x) => h('div', { class: 'inv-r' }, h('span', null, short(x.k)), h('span', { class: 'num' }, x.open), h('span', { class: 'num' }, x.inn + x.tin + x.tout + x.adj), h('span', { class: 'num' }, x.sold), h('b', { class: 'num' }, x.close))))) : h('div', { class: 'card empty' }, 'مفيش حركة مخزون')));
   }
+
+  /* ---------- stock ---------- */
   function stock() {
     const bs = P.branches();
     const b = M.sbr || (bs[0] || [])[0];
@@ -123,9 +173,15 @@
     const lim = P.lowLimit();
     const keys = C.keys();
     const low = keys.filter((kk) => P.num(st[kk]) <= lim).length;
-    return h('div', null, head('المخزون لحظة بلحظة', b ? P.branchName(b) : '', low ? low + ' صنف قرب يخلص' : 'المخزون كويس'),
-      h('div', { class: 'w' }, P.select(bs.map(([id, br]) => [id, br.n]), b, { class: 'inp', style: { marginBottom: '10px' }, onchange: (e) => { M.sbr = e.target.value; draw(); } }),
-        h('div', { class: 'card' }, h('table', null, keys.map((kk) => { const q = P.num(st[kk]); return h('tr', null, h('td', null, C.label(kk)), h('td', { class: 'n ' + (q <= 0 ? 'ze' : q <= lim ? 'lo' : '') }, q)); })))));
+    const by = {}; for (const kk of keys) { const c = C.parse(kk).c; (by[c] = by[c] || []).push(kk); }
+    return h('div', null,
+      head('المخزون لحظة بلحظة', hero(b ? P.branchName(b) : '', h('span', { class: 'num' }, P.fmt.n(keys.reduce((a, kk) => a + Math.max(0, P.num(st[kk])), 0)), h('small', null, ' قطعة')), h('span', null, low ? low + ' صنف قرب يخلص' : 'المخزون كويس'))),
+      h('div', { class: 'w' },
+        h('div', { class: 'bchips' }, bs.map(([id, br]) => h('button', { class: id === b ? 'on' : '', onclick: () => { M.sbr = id; draw(); } }, br.n))),
+        Object.entries(by).map(([c, ks]) => h('div', { class: 'card list' },
+          h('div', { class: 'grp-t' }, catDot(c), (C.cat(c) || {}).n || ''),
+          h('div', { class: 'stk' }, ks.map((kk) => { const q = P.num(st[kk]);
+            return h('div', { class: 'sk ' + (q <= 0 ? 'ze' : q <= lim ? 'lo' : '') }, h('span', null, short(kk)), h('b', { class: 'num' }, q)); }))))));
   }
   boot().catch((e) => { root().textContent = 'حصلت مشكلة: ' + e.message; });
 })();

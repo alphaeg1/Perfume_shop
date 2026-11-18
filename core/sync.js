@@ -161,7 +161,11 @@
     async start(me) {
       this.stop();
       this.me = me;
-      this.scope = me.role === 'owner' ? 'all' : me.role === 'viewer' ? 'view' : 'b_' + me.b;
+      const cf = P.FB.cfg || {};
+      const ns = cf.demo ? 'demo' : 'db' + Array.from(String(cf.dbUrl || '')).reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36);
+      this.scope = ns + '_' + (me.role === 'owner' ? 'all' : me.role === 'viewer' ? 'view' : 'b_' + me.b);
+      // drop caches left by the old unscoped versions (they mixed demo numbers with real ones)
+      if (!(await P.kv.get('cacheV2'))) { for (const k of await P.kv.keys()) { if (/^(L|OB|ST|RV):(all|view|b_)/.test(String(k))) await P.kv.del(k).catch(() => {}); } await P.kv.set('cacheV2', 1); }
       await this.loadCache();
       this.today = P.dayKey();
       this.emit();

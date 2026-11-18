@@ -130,3 +130,15 @@ input,select,textarea{font:inherit;color:inherit}
 .big-price{font-family:var(--disp);font-size:30px;color:var(--plum);margin-top:8px}
 select.inp option{background:#141414}
 .boot-b{border-color:var(--plum)}
+/* ---- offers ---- */
+.pc{position:relative}
+.pc .offb{position:absolute;top:10px;left:10px;z-index:2;background:#F2C230;color:#1C1D2A;font-weight:800;font-size:12px;padding:4px 10px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.pv{display:inline-flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.pv s{opacity:.55;font-weight:500;font-size:.82em}
+.offline{display:inline-block;margin-top:6px;background:#FFF4CC;color:#7A5B00;border-radius:10px;padding:4px 10px;font-weight:700;font-size:13px}
+.sec.offers{background:linear-gradient(160deg,#FFE27A,#F2C230);border-radius:26px;margin:14px;padding:18px 14px 8px}
+.sec.offers h2{color:#1C1D2A;margin:2px 0 12px}
+.off-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.off-k{display:inline-block;background:#1C1D2A;color:#F2C230;font-weight:800;font-size:12px;padding:3px 10px;border-radius:20px}
+.off-end{background:#ffffffb0;color:#1C1D2A;font-weight:800;font-size:13px;padding:6px 12px;border-radius:12px;white-space:nowrap}
+

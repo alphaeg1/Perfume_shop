@@ -74,14 +74,23 @@
   const size = (c, s) => ((cat(c) || {}).sizes || {})[s];
   const prods = (c) => ents((st.catalog || {}).prods).filter(([, p]) => p.c === c && p.on !== false && p.web !== false && cat(p.c)).sort(byOrd);
   const prod = (p) => ((st.catalog || {}).prods || {})[p];
-  const price = (c, s, p) => { const pr = prod(p); if (pr && pr.prices && pr.prices[s] !== undefined && pr.prices[s] !== '') return num(pr.prices[s]); return num((size(c, s) || {}).price); };
+  const base = (c, s, p) => { const pr = prod(p); if (pr && pr.prices && pr.prices[s] !== undefined && pr.prices[s] !== '') return num(pr.prices[s]); return num((size(c, s) || {}).price); };
+  const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const offers = () => ents((st.catalog || {}).offers).filter(([, o]) => o && o.on !== false && o.web !== false && (!o.from || o.from <= today()) && (!o.to || o.to >= today()) && cat(o.c));
+  const offerOf = (c, s, p) => { let best = null, rank = -1; for (const [id, o] of offers()) { if (o.c !== c) continue; let r = -1; if (o.p) { if (o.p === p && (!o.s || o.s === s)) r = 3; } else if (o.s) { if (o.s === s) r = 2; } else r = 1; if (r > rank) { rank = r; best = { id, ...o }; } } return best; };
+  const applyOff = (o, b) => { if (!o || !b) return b; const v = num(o.val); return Math.max(0, Math.round(o.kind === 'price' ? v : o.kind === 'amt' ? b - v : b * (1 - v / 100))); };
+  const price = (c, s, p) => applyOff(offerOf(c, s, p), base(c, s, p));
+  const onOffer = (c, s, p) => price(c, s, p) < base(c, s, p);
+  const priceEl = (c, s, p, pre) => h('span', { class: 'pv' }, pre || null, onOffer(c, s, p) ? h('s', null, money(base(c, s, p))) : null, h('span', null, money(price(c, s, p))));
+  const offBadge = (o) => o ? h('span', { class: 'offb' }, o.kind === 'pct' ? 'خصم ' + num(o.val) + '%' : 'عرض') : null;
   const key = (c, s, p) => ((cat(c) || {}).mode === 'product' ? `${c}|${s}|${p}` : `${c}|${s}`);
   const avail = (c, s, p) => { if (DEMO) return 10; let q = 0; for (const b in st.avail) q += num((st.avail[b] || {})[key(c, s, p)]); return q; };
   const fill = (c, s) => { const ml = sizes(c).map(([, z]) => num(z.ml)); const max = Math.max(1, ...ml); return 0.25 + 0.7 * (num((size(c, s) || {}).ml) / max); };
   const minPrice = (c, p) => Math.min(...sizes(c).filter(([s]) => hasPrice(c, s, p)).map(([s]) => price(c, s, p)));
-  const byP = (c) => (cat(c) || {}).mode === 'product';
-  const hasPrice = (c, s, p) => !byP(c) || !!(prod(p) && prod(p).prices && prod(p).prices[s] !== undefined && prod(p).prices[s] !== '');
-  const webSizes = (c) => sizes(c).filter(([, z]) => z.web !== false);
+  const byP = (c) => ['product', 'item'].includes((cat(c) || {}).mode);
+  const isItem = (c) => (cat(c) || {}).mode === 'item';
+  const hasPrice = (c, s, p) => (byP(c) ? !!(prod(p) && prod(p).prices && prod(p).prices[s] !== undefined && prod(p).prices[s] !== '') : num((size(c, s) || {}).price) > 0);
+  const webSizes = (c) => sizes(c).filter(([sz, z]) => z.web !== false && (byP(c) || hasPrice(c, sz)));
 
   // images: small JSON documents holding a compressed picture
   const imgMem = {};
@@ -116,6 +125,7 @@
       s.open === false ? h('div', { class: 'closed' }, 'استقبال الطلبات واقف دلوقتي. تقدر تتفرج وتكلمنا على الأرقام اللي فوق.') : null,
       h('div', { class: 'vials' }, list.map(([c, ct], i) => h('button', { class: 'vial', style: { '--c': ct.color || '#F2C230' }, onclick: () => jump(c) },
         h('div', { class: 'tube' }, h('div', { class: 'liq', style: { '--h': '8%' }, 'data-h': [72, 58, 84, 46][i % 4] + '%' })), h('span', null, ct.n)))),
+      offerSection(),
       featured.length ? h('div', { class: 'sec' }, h('h2', null, 'مختارات')) : null,
       featured.length ? h('div', { class: 'feat' }, featured.map(([pid, p]) => card(pid, p))) : null,
       h('nav', { class: 'chips', 'aria-label': 'الأقسام' }, list.map(([c, ct]) => h('button', { class: 'chip', 'data-c': c, onclick: () => jump(c) }, ct.n))),
@@ -133,6 +143,20 @@
       document.querySelectorAll('section.sec').forEach((x) => so.observe(x));
     }
   }
+  function offerSection() {
+    const os = offers(); if (!os.length) return null;
+    const items = [];
+    for (const [oid, o] of os) {
+      if (byP(o.c)) for (const [pid, pp] of prods(o.c)) { if (o.p && pid !== o.p) continue; if (webSizes(o.c).some(([sz]) => hasPrice(o.c, sz, pid) && onOffer(o.c, sz, pid))) items.push(['p', pid, pp]); }
+      else for (const [sz, z] of webSizes(o.c)) { if (o.s && sz !== o.s) continue; if (onOffer(o.c, sz)) items.push(['s', o.c, sz, z]); }
+    }
+    const seen = new Set(); const uniq = items.filter((x) => { const k = x.slice(0, 3).join('|'); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
+    if (!uniq.length) return null;
+    const ends = os.map(([, o]) => o.to).filter(Boolean).sort()[0];
+    return h('section', { class: 'sec offers', id: 'c-offers' },
+      h('div', { class: 'off-head' }, h('div', null, h('span', { class: 'off-k' }, 'عروض'), h('h2', null, os[0][1].t || 'عروض لفترة محدودة')), ends ? h('div', { class: 'off-end' }, 'لحد ' + ends.slice(8, 10) + '/' + ends.slice(5, 7)) : null),
+      h('div', { class: 'grid' }, uniq.map((x) => (x[0] === 'p' ? card(x[1], x[2]) : sizeCard(x[1], x[2], x[3])))));
+  }
   function jump(c) { const el = document.getElementById('c-' + c); if (el) window.scrollTo({ top: el.offsetTop - 110, behavior: 'smooth' }); }
   function sizeCard(c, sz, z) {
     const color = (cat(c) || {}).color || '#F2C230';
@@ -140,8 +164,9 @@
     const id = `${c}-${sz}`;
     const im = h('div', { class: 'im', 'data-p': id }, bottle(fill(c, sz), color, 34));
     if (z.img && io) io.observe(im); else img(id, im);
-    return h('button', { class: 'pc' + (a ? '' : ' out'), style: { '--c': color }, onclick: () => openSize(c, sz) },
-      im, h('div', { class: 'tx' }, h('b', null, (cat(c) || {}).n + ' ' + z.n), h('div', { class: 'pr num' }, a ? money(price(c, sz)) : 'خلص حالياً')));
+    const ob = onOffer(c, sz) ? offBadge(offerOf(c, sz)) : null;
+    return h('button', { class: 'pc' + (a ? '' : ' out') + (ob ? ' off' : ''), style: { '--c': color }, onclick: () => openSize(c, sz) },
+      im, ob, h('div', { class: 'tx' }, h('b', null, (cat(c) || {}).n + ' ' + z.n), h('div', { class: 'pr num' }, a ? priceEl(c, sz) : 'خلص حالياً')));
   }
   function openSize(c, sz) {
     const z = size(c, sz); const ct = cat(c) || {}; const color = ct.color || '#F2C230';
@@ -153,7 +178,7 @@
     const draw = () => { qtyB.textContent = q; btn.disabled = a <= 0 || st.site.open === false; btn.textContent = st.site.open === false ? 'الطلبات واقفة دلوقتي' : a <= 0 ? 'خلص حالياً' : 'أضف للسلة — ' + money(price(c, sz) * q); };
     const sh = sheet(h('div', null, imBox, h('div', { class: 'sh-b' },
       h('h3', null, ct.n + ' ' + z.n), ct.en ? h('div', { dir: 'ltr', style: { textAlign: 'right', color: 'var(--muted)' } }, ct.en + ' ' + (z.ml ? z.ml + 'ml' : '')) : null,
-      h('div', { class: 'big-price num' }, money(price(c, sz))),
+      h('div', { class: 'big-price num' }, priceEl(c, sz)), onOffer(c, sz) ? h('div', { class: 'offline' }, (offerOf(c, sz).t || 'عرض لفترة محدودة')) : null,
       h('div', { class: 'row', style: { margin: '16px 0', justifyContent: 'space-between' } }, h('span', { class: 'lbl', style: { margin: 0 } }, 'الكمية'),
         h('div', { class: 'qty' }, h('button', { 'aria-label': 'قلل', onclick: () => { q = Math.max(1, q - 1); draw(); } }, '−'), qtyB, h('button', { 'aria-label': 'زود', onclick: () => { q = Math.min(20, q + 1); draw(); } }, '+'))),
       btn)));
@@ -169,8 +194,10 @@
     const anyAvail = webSizes(c).some(([s]) => hasPrice(c, s, pid) && avail(c, s, pid) > 0);
     const im = h('div', { class: 'im', 'data-p': pid }, bottle(0.65, color, 34), p.tag ? h('span', { class: 'tag' }, p.tag) : null);
     if (p.img && io) io.observe(im); else img(pid, im);
-    return h('button', { class: 'pc' + (anyAvail ? '' : ' out'), style: { '--c': color }, onclick: () => openProduct(pid) },
-      im, h('div', { class: 'tx' }, h('b', null, p.n), p.en ? h('small', { dir: 'ltr' }, p.en) : null, h('div', { class: 'pr num' }, anyAvail ? 'من ' + money(minPrice(c, pid)) : 'خلص حالياً')));
+    const ws = webSizes(c).filter(([s]) => hasPrice(c, s, pid)); const offS = ws.find(([s]) => onOffer(c, s, pid));
+    const one = ws.length === 1 ? ws[0][0] : null;
+    return h('button', { class: 'pc' + (anyAvail ? '' : ' out') + (offS ? ' off' : ''), style: { '--c': color }, onclick: () => openProduct(pid) },
+      im, offS ? offBadge(offerOf(c, offS[0], pid)) : null, h('div', { class: 'tx' }, h('b', null, p.n), p.en ? h('small', { dir: 'ltr' }, p.en) : null, h('div', { class: 'pr num' }, !anyAvail ? 'خلص حالياً' : one ? priceEl(c, one, pid) : offS ? priceEl(c, offS[0], pid) : 'من ' + money(minPrice(c, pid)))));
   }
   function footer() {
     const s = st.site; const so = s.social || {};
@@ -208,7 +235,7 @@
       sizesBox.replaceChildren(...szs.map(([s, z]) => {
         const a = avail(c, s, pid); const on = s === sel;
         return h('button', { class: 'sz' + (on ? ' on' : ''), role: 'radio', 'aria-checked': on ? 'true' : 'false', disabled: a <= 0, onclick: () => { sel = s; draw(); } },
-          bottle(on ? fill(c, s) : fill(c, s) * 0.92, on ? color : '#b9a9b2', 26), h('b', null, z.n), h('small', { class: 'num' }, a > 0 ? money(price(c, s, pid)) : 'خلص'));
+          bottle(on ? fill(c, s) : fill(c, s) * 0.92, on ? color : '#b9a9b2', 26), h('b', null, z.n), h('small', { class: 'num' }, a > 0 ? priceEl(c, s, pid) : 'خلص'));
       }));
       qtyB.textContent = q;
       btn.disabled = !sel || st.site.open === false;
@@ -219,14 +246,15 @@
       h('h3', null, p.n), p.en ? h('div', { dir: 'ltr', style: { textAlign: 'right', color: 'var(--muted)' } }, p.en) : null,
       p.d ? h('p', { style: { color: 'var(--muted)', margin: '8px 0 0' } }, p.d) : null,
       n.top || n.heart || n.base ? h('div', { class: 'notes' }, [['الافتتاحية', n.top], ['القلب', n.heart], ['القاعدة', n.base]].filter((x) => x[1]).map(([l, v]) => h('div', null, h('small', null, l), h('span', null, v)))) : null,
-      h('span', { class: 'lbl' }, 'اختار الحجم'), sizesBox,
+      isItem(c) ? h('div', { class: 'big-price num' }, sel ? priceEl(c, sel, pid) : null) : null, isItem(c) && sel && onOffer(c, sel, pid) ? h('div', { class: 'offline' }, offerOf(c, sel, pid).t || 'عرض لفترة محدودة') : null,
+      isItem(c) ? null : h('span', { class: 'lbl' }, 'اختار الحجم'), isItem(c) ? null : sizesBox,
       h('div', { class: 'row', style: { margin: '16px 0', justifyContent: 'space-between' } }, h('span', { class: 'lbl', style: { margin: 0 } }, 'الكمية'),
         h('div', { class: 'qty' }, h('button', { 'aria-label': 'قلل', onclick: () => { q = Math.max(1, q - 1); draw(); } }, '−'), qtyB, h('button', { 'aria-label': 'زود', onclick: () => { q = Math.min(20, q + 1); draw(); } }, '+'))),
       btn)));
     btn.onclick = () => {
       if (!sel) return;
       const ex = st.cart.find((l) => l.p === pid && l.s === sel && l.c === c);
-      if (ex) ex.q += q; else st.cart.push({ p: pid, c, s: sel, q, pr: price(c, sel, pid), n: (cat(c) || {}).n + ' ' + p.n, sn: size(c, sel).n });
+      if (ex) ex.q += q; else st.cart.push({ p: pid, c, s: sel, q, pr: price(c, sel, pid), n: (cat(c) || {}).n + ' ' + p.n, sn: isItem(c) ? '' : size(c, sel).n });
       save('cart', st.cart); refreshBar(); sh.close(); toast('اتضاف للسلة');
     };
     draw();
@@ -328,7 +356,7 @@
   function demoData() {
     const sz = (a, b, c) => ({ s100: { n: '100 مللي', ml: 100, price: a, ord: 1 }, s50: { n: '50 مللي', ml: 50, price: b, ord: 2 }, s30: { n: '30 مللي', ml: 30, price: c, ord: 3 } });
     return {
-      catalog: { cats: { fr: { n: 'فرنساوي', en: 'French', color: '#F2C230', ord: 1, sizes: sz(500, 300, 200) }, gu: { n: 'خليجي', en: 'Gulf', color: '#E39B2D', ord: 2, sizes: sz(650, 380, 250) }, sh: { n: 'أزايز أشكال', en: 'Shaped bottles', color: '#F5F1E6', ord: 3, sizes: sz(600, 350, 230) }, or: { n: 'أوريجينال', en: 'Original', color: '#C9A961', ord: 4, mode: 'product', sizes: { s100: { n: '100 مللي', ml: 100, ord: 1 } } } }, prods: {} },
+      catalog: { cats: { fr: { n: 'فرنساوي', en: 'French', color: '#F2C230', ord: 1, sizes: sz(500, 300, 200) }, gu: { n: 'خليجي', en: 'Gulf', color: '#E39B2D', ord: 2, sizes: sz(650, 380, 250) }, sh: { n: 'أزايز أشكال', en: 'Shaped bottles', color: '#F5F1E6', ord: 3, sizes: sz(600, 350, 230) }, or: { n: 'أوريجينال', en: 'Original', color: '#C9A961', ord: 4, mode: 'product', sizes: { s100: { n: '100 مللي', ml: 100, ord: 1 } } }, bk: { n: 'مباخر', en: 'Incense burners', color: '#D9A21E', ord: 5, mode: 'item', sizes: { u: { n: 'القطعة', ord: 1 } } } }, prods: { p1: { c: 'bk', n: 'مبخرة القبة', prices: { u: 550 }, ord: 1 }, p2: { c: 'bk', n: 'مبخرة الدلّة', prices: { u: 550 }, ord: 2 } }, offers: { o1: { t: 'عرض المباخر — وفّر 300 جنيه', c: 'bk', kind: 'amt', val: 300, on: true, web: true, to: '2099-12-31' }, o2: { t: 'خصم الخليجي', c: 'gu', s: 's50', kind: 'pct', val: 20, on: true, web: true } } },
       site: { name: 'اسم البراند', nameEn: 'BRAND', slogan: 'عرض تجريبي للموقع', phones: ['01000000000'], wa: '01000000000', addr: 'القاهرة', areas: { a1: { n: 'المعادي', fee: 40, ord: 1 }, a2: { n: 'مدينة نصر', fee: 45, ord: 2 } }, open: true },
       routing: { mode: 'manual' }, avail: {},
     };

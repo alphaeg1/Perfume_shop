@@ -33,18 +33,47 @@
     size(c, s) { return S.get(`catalog/cats/${c}/sizes/${s}`); },
     prods(c, all) { return P.ents(S.get('catalog/prods')).filter(([, p]) => (!c || p.c === c) && (all || p.on !== false)).sort(byOrd); },
     prod(p) { return S.get(`catalog/prods/${p}`); },
-    price(c, s, p) {
+    base(c, s, p) {
       const pr = p && C.prod(p);
       if (pr && pr.prices && pr.prices[s] !== undefined && pr.prices[s] !== null && pr.prices[s] !== '') return P.num(pr.prices[s]);
       const sz = C.size(c, s);
-      return sz ? P.num(sz.price) : 0;
+      return sz && sz.price !== '' && sz.price !== null && sz.price !== undefined ? P.num(sz.price) : 0;
+    },
+    // ---- offers: catalog/offers/{id} = {t, c, s, p, kind:'pct'|'amt'|'price', val, from, to, on, web}
+    offers(all) { return P.ents(S.get('catalog/offers')).filter(([, o]) => o && (all || C.offerLive(o))).sort((a, b) => P.num(b[1].ts) - P.num(a[1].ts)); },
+    offerLive(o, day) { const d = day || P.dayKey(); return !!o && o.on !== false && (!o.from || o.from <= d) && (!o.to || o.to >= d); },
+    offerState(o) { const d = P.dayKey(); if (o.on === false) return 'off'; if (o.from && o.from > d) return 'soon'; if (o.to && o.to < d) return 'done'; return 'live'; },
+    offerFor(c, s, p) {
+      let best = null, rank = -1;
+      for (const [id, o] of C.offers()) {
+        if (o.c !== c) continue;
+        let r = -1;
+        if (o.p) { if (o.p === p && (!o.s || o.s === s)) r = 3; }
+        else if (o.s) { if (o.s === s) r = 2; }
+        else r = 1;
+        if (r > rank) { rank = r; best = { id, ...o }; }
+      }
+      return best;
+    },
+    applyOffer(o, base) {
+      if (!o || !base) return base;
+      const v = P.num(o.val);
+      const out = o.kind === 'price' ? v : o.kind === 'amt' ? base - v : base * (1 - v / 100);
+      return Math.max(0, Math.round(out));
+    },
+    price(c, s, p) { const b = C.base(c, s, p); return C.applyOffer(C.offerFor(c, s, p), b); },
+    hasPrice(c, s, p) {
+      const pr = p && C.prod(p);
+      if (C.byProduct(c)) return !!(pr && pr.prices && pr.prices[s] !== undefined && pr.prices[s] !== '' && pr.prices[s] !== null);
+      const sz = C.size(c, s); return !!sz && sz.price !== '' && sz.price !== null && sz.price !== undefined && P.num(sz.price) > 0;
     },
     cost(c, s, p) {
       const co = S.get('costs') || {};
       if (p && co.p && co.p[p] && co.p[p][s] !== undefined) return P.num(co.p[p][s]);
       return P.num(co[c] && co[c][s]);
     },
-    byProduct(c) { const cat = C.cat(c); return !!(cat && cat.mode === 'product'); },
+    byProduct(c) { const cat = C.cat(c); return !!(cat && (cat.mode === 'product' || cat.mode === 'item')); },
+    isItem(c) { const cat = C.cat(c); return !!(cat && cat.mode === 'item'); },
     key(c, s, p) { return C.byProduct(c) && p ? `${c}|${s}|${p}` : `${c}|${s}`; },
     parse(k) { const [c, s, p] = String(k).split('|'); return { c, s, p: p || null }; },
     label(k, short) {
@@ -53,7 +82,7 @@
       const parts = [];
       if (!short || !pr) parts.push(cat ? cat.n : 'قسم محذوف');
       if (pr) parts.push(pr.n);
-      parts.push(sz ? sz.n : 'حجم محذوف');
+      if (!(C.isItem(c) && pr)) parts.push(sz ? sz.n : 'حجم محذوف');
       return parts.join(' — ');
     },
     // every stock line the business tracks
@@ -392,6 +421,46 @@
   };
 
   // ---------------- defaults for a new business ----------------
+  // ---------------- one-time catalog upgrade (Lampika price list + new boxes, Nov 2026) ----------------
+  P.LAMPIKA_V2 = {
+    sizes: { fr: { 30: 100, 40: 150, 50: 200, 70: 250, 100: 300 }, gu: { 30: 150, 40: 200, 50: 250, 70: 300, 100: 400 } },
+    shaped: [['fr50', 'فرنساوي 50 مللي', 50, 300, 1], ['fr100', 'فرنساوي 100 مللي', 100, 400, 2], ['gu50', 'خليجي 50 مللي', 50, 350, 3], ['gu100', 'خليجي 100 مللي', 100, 500, 4]],
+    cats: [
+      ['own', { n: 'إزازة العميل', en: 'Refill', color: '#FFE08A', mode: 'size', ord: 5, on: true, note: 'لو العميل جايب إزازته' }, [30, 40, 50, 70, 100]],
+      ['bk', { n: 'مباخر', en: 'Incense burners', color: '#D9A21E', mode: 'item', ord: 6, on: true }],
+      ['hc', { n: 'عطور هاي كوبي', en: 'High copy', color: '#E8B84A', mode: 'product', ord: 7, on: true }, [30, 50, 100]],
+      ['fl', { n: 'معطر أرضيات', en: 'Floor freshener', color: '#9FD8C8', mode: 'item', ord: 8, on: true }],
+      ['sp', { n: 'معطر رش', en: 'Room spray', color: '#B9DDF0', mode: 'item', ord: 9, on: true }],
+      ['bx', { n: 'بخور علب', en: 'Boxed bakhoor', color: '#C98B4E', mode: 'item', ord: 10, on: true }],
+      ['st', { n: 'بخور عيدان', en: 'Incense sticks', color: '#B07A47', mode: 'item', ord: 11, on: true }],
+      ['bs', { n: 'سبلاش', en: 'Body splash', color: '#F3A7C0', mode: 'item', ord: 12, on: true }],
+    ],
+  };
+  P.migrateV2 = function () {
+    if (!S.isOwner || S.get('catalog/mig/v2')) return;
+    const M = P.LAMPIKA_V2; const up = {};
+    const sizeByMl = (c, ml) => (C.sizes(c, true).find(([, z]) => P.num(z.ml) === ml) || [])[0];
+    for (const c of Object.keys(M.sizes)) {
+      if (!C.cat(c)) continue;
+      for (const ml of Object.keys(M.sizes[c]).map(Number)) {
+        const id = sizeByMl(c, ml) || 's' + ml; const base = `catalog/cats/${c}/sizes/${id}`;
+        if (!C.size(c, id)) Object.assign(up, { [`${base}/n`]: ml + ' مللي', [`${base}/ml`]: ml, [`${base}/on`]: true, [`${base}/web`]: true });
+        up[`${base}/price`] = M.sizes[c][ml]; up[`${base}/ord`] = ml;
+      }
+    }
+    if (C.cat('sh')) for (const [id, n, ml, pr, ord] of M.shaped) {
+      const base = `catalog/cats/sh/sizes/${id}`;
+      Object.assign(up, { [`${base}/n`]: n, [`${base}/ml`]: ml, [`${base}/price`]: pr, [`${base}/ord`]: ord, [`${base}/on`]: true, [`${base}/web`]: true });
+    }
+    if (C.cat('sh')) for (const [id, z] of C.sizes('sh', true)) if (!M.shaped.some(([x]) => x === id) && z.on !== false) up[`catalog/cats/sh/sizes/${id}/on`] = false;
+    for (const [c, cat, mls] of M.cats) {
+      if (C.cat(c)) continue;
+      up[`catalog/cats/${c}`] = Object.assign({}, cat, { sizes: cat.mode === 'item' ? { u: { n: 'القطعة', ml: 0, price: 0, ord: 1, on: true, web: true } } :
+        Object.fromEntries((mls || []).map((ml) => ['s' + ml, { n: ml + ' مللي', ml, price: '', ord: ml, on: true, web: c !== 'own' }])) });
+    }
+    up['catalog/mig/v2'] = Date.now(); up['rev/cat'] = Date.now();
+    S.write(up, 'تحديث الأسعار والخانات الجديدة');
+  };
   P.defaultCatalog = function () {
     return {
       cats: {
