@@ -3,7 +3,7 @@
   --ui:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;--disp:'Reem Kufi','IBM Plex Sans Arabic',sans-serif;color-scheme:light}
 :root[data-theme=dark]{--bg:#0E0E0C;--card:#18181A;--ink:#F3F1EA;--muted:#9A968C;--line:#2A2A2C;--soft:#202022;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;font:15px/1.6 var(--ui);color:var(--ink);background:var(--bg);direction:rtl}
+body{margin:0;font:15px/1.6 var(--ui);color:var(--ink);background:var(--bg)}
 #m{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);padding-bottom:96px}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 input,select{font:inherit}
@@ -51,7 +51,7 @@ input,select{font:inherit}
 .it .q{min-width:34px;text-align:center;font-weight:800;font-size:12.5px;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:1px 6px;direction:ltr}
 .ord .foot{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .alerts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.al{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px 14px;font-size:14px;text-align:right;width:100%}
+.al{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px 14px;font-size:14px;text-align:start;width:100%}
 .al.warn{background:#FFF6D6;border-color:#F4DF9A;color:#6E5200}
 :root[data-theme=dark] .al.warn{background:#2A2410;border-color:#4A3E14;color:#F2D57A}
 .al .go{margin-right:auto;font-size:20px;opacity:.6}
@@ -110,3 +110,4 @@ input,select{font:inherit}
 .empty{text-align:center;color:var(--muted);padding:26px 10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 #print{display:none}
 select.inp option{background:var(--card)}
+.ib.lang{font-weight:800;font-size:13px;font-family:inherit}

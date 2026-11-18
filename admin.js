@@ -78,7 +78,7 @@
     return h('header', { class: 'top' },
       h('div', { class: 'r' },
         h('div', { class: 'who' }, h('b', null, site.name || 'المتابعة'), h('small', null, title)),
-        h('div', { class: 'acts' }, h('span', { class: 'live' + (live ? '' : ' off') }, h('i'), live ? 'لايف' : 'أوفلاين'),
+        h('div', { class: 'acts' }, h('span', { class: 'live' + (live ? '' : ' off') }, h('i'), live ? 'لايف' : 'أوفلاين'), window.__langBtn ? window.__langBtn('ib lang') : null,
           h('button', { class: 'ib', 'aria-label': 'الوضع الليلي', onclick: toggleTheme }, P.icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon', 18)),
           h('button', { class: 'ib', 'aria-label': 'خروج', onclick: logout }, P.icon('logout', 18)))),
       sub || null);

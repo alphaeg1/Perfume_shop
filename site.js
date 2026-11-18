@@ -9,8 +9,8 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const h = (tag, props, ...kids) => {
     const el = document.createElement(tag);
-    for (const k in props || {}) { const v = props[k]; if (v === null || v === undefined || v === false) continue; if (k === 'class') el.className = v; else if (k === 'style' && typeof v === 'object') { for (const sk in v) { if (sk.startsWith('--')) el.style.setProperty(sk, v[sk]); else el.style[sk] = v[sk]; } } else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (k === 'html') el.innerHTML = v; else el.setAttribute(k, v === true ? '' : v); }
-    const add = (c) => { if (c === null || c === undefined || c === false) return; if (Array.isArray(c)) return c.forEach(add); el.appendChild(c instanceof Node ? c : document.createTextNode(String(c))); };
+    for (const k in props || {}) { const v = props[k]; if (v === null || v === undefined || v === false) continue; if (k === 'class') el.className = v; else if (k === 'style' && typeof v === 'object') { for (const sk in v) { if (sk.startsWith('--')) el.style.setProperty(sk, v[sk]); else el.style[sk] = v[sk]; } } else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (k === 'html') el.innerHTML = v; else el.setAttribute(k, v === true ? '' : (window.__T && /^(placeholder|title|aria-label|alt)$/.test(k) ? window.__T(String(v)) : v)); }
+    const add = (c) => { if (c === null || c === undefined || c === false) return; if (Array.isArray(c)) return c.forEach(add); el.appendChild(c instanceof Node ? c : document.createTextNode(window.__T ? window.__T(String(c)) : String(c))); };
     kids.forEach(add); return el;
   };
   const svg = (m) => { const t = document.createElement('template'); t.innerHTML = m.trim(); return t.content.firstChild; };
@@ -123,6 +123,7 @@
     const root = $('#shop');
     root.replaceChildren(
       h('header', { class: 'bar' }, s.logo ? h('img', { class: 'lg', src: s.logo, alt: '' }) : null, h('b', null, s.name || 'المتجر'),
+        window.__langBtn ? (() => { const lb = window.__langBtn('ib lang'); return lb; })() : null,
         h('button', { class: 'ib', 'aria-label': 'فاتح / غامق', onclick: (e) => { const d = document.documentElement; const n = d.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; d.setAttribute('data-theme', n); try { localStorage.setItem('theme', n); } catch (er) {} e.currentTarget.replaceChildren(icon(n === 'dark' ? 'sun' : 'moon', 18)); } }, icon(document.documentElement.getAttribute('data-theme') === 'dark' ? 'sun' : 'moon', 18)),
         phone ? h('a', { class: 'ib', href: 'tel:' + phone, 'aria-label': 'اتصل بينا' }, icon('phone', 18)) : null,
         wa ? h('a', { class: 'ib', href: 'https://wa.me/' + wa, target: '_blank', rel: 'noopener', 'aria-label': 'واتساب' }, icon('wa', 18)) : null),

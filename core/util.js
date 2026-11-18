@@ -24,13 +24,13 @@
         else if (k === 'value') el.value = v;
         else if (k === 'checked') el.checked = !!v;
         else if (k === 'dataset') Object.assign(el.dataset, v);
-        else el.setAttribute(k, v === true ? '' : v);
+        else el.setAttribute(k, v === true ? '' : (window.__T && (k === 'placeholder' || k === 'title' || k === 'aria-label' || k === 'alt') ? window.__T(String(v)) : v));
       }
     }
     const add = (c) => {
       if (c === null || c === undefined || c === false) return;
       if (Array.isArray(c)) return c.forEach(add);
-      el.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+      el.appendChild(c instanceof Node ? c : document.createTextNode(window.__T ? window.__T(String(c)) : String(c)));
     };
     kids.forEach(add);
     return el;
@@ -70,7 +70,7 @@
   P.fmt = {
     n: (x) => P.num(x).toLocaleString('en-US', { maximumFractionDigits: 2 }),
     money: (x) => P.num(x).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ج',
-    time: (ts) => { const d = new Date(ts); let h = d.getHours(); const ap = h < 12 ? 'ص' : 'م'; h = h % 12 || 12; return `${h}:${pad(d.getMinutes())} ${ap}`; },
+    time: (ts) => { const d = new Date(ts); let h = d.getHours(); const ap = window.__LANG === 'en' ? (h < 12 ? 'AM' : 'PM') : (h < 12 ? 'ص' : 'م'); h = h % 12 || 12; return `${h}:${pad(d.getMinutes())} ${ap}`; },
     day: (k) => { const d = P.parseDay(k); return `${AR_DAYS[d.getDay()]} ${d.getDate()} ${AR_MONTHS[d.getMonth()]} ${d.getFullYear()}`; },
     dayShort: (k) => { const d = P.parseDay(k); return `${d.getDate()} ${AR_MONTHS[d.getMonth()]}`; },
     month: (mk) => { const [y, m] = mk.split('-').map(Number); return `${AR_MONTHS[m - 1]} ${y}`; },

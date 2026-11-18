@@ -2,7 +2,7 @@
   --ui:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;--disp:'Reem Kufi','IBM Plex Sans Arabic',sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:#000}
-body{margin:0;font:15px/1.6 var(--ui);color:var(--ink);direction:rtl}
+body{margin:0;font:15px/1.6 var(--ui);color:var(--ink)}
 #shop{max-width:480px;margin:0 auto;min-height:100vh;background:var(--powder);position:relative;padding-bottom:96px;box-shadow:0 0 0 1px #1a1a1a}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 input,select,textarea{font:inherit;color:inherit}
@@ -22,7 +22,7 @@ input,select,textarea{font:inherit;color:inherit}
 /* hero */
 .hero{padding:26px 20px 10px;position:relative;overflow:hidden}
 .hero h1{font-family:var(--disp);font-weight:700;font-size:44px;line-height:1.05;margin:0;color:#fff}
-.hero .en{letter-spacing:5px;font-size:12px;color:var(--muted);margin-top:6px;direction:ltr;text-align:right}
+.hero .en{letter-spacing:5px;font-size:12px;color:var(--muted);margin-top:6px;direction:ltr;text-align:start}
 .hero p{margin:12px 0 0;color:var(--muted);max-width:30ch}
 .closed{margin:12px 16px 0;background:#2b2408;color:var(--plum);border:1px solid #4a3d0d;border-radius:12px;padding:12px 14px;font-size:14px}
 
@@ -46,7 +46,7 @@ input,select,textarea{font:inherit;color:inherit}
 .feat{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 8px;scroll-snap-type:x mandatory;scrollbar-width:none}
 .feat .pc{min-width:62%;scroll-snap-align:start}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.pc{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line);text-align:right;display:flex;flex-direction:column}
+.pc{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line);text-align:start;display:flex;flex-direction:column}
 .pc .im{aspect-ratio:1/1;background:radial-gradient(90% 80% at 50% 30%,color-mix(in srgb,var(--c) 22%,#141414),#101010);display:grid;place-items:center;position:relative}
 .pc .im img{width:100%;height:100%;object-fit:cover}
 .pc .im .tag{position:absolute;top:8px;right:8px;background:var(--plum);color:#111;font-size:11px;padding:2px 8px;border-radius:10px}
@@ -96,7 +96,7 @@ input,select,textarea{font:inherit;color:inherit}
 .inp{width:100%;border:1px solid #2c2c2c;border-radius:12px;padding:12px 13px;background:#101010;font-size:15px;color:var(--ink)}
 .inp:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px #f2c23026}
 .pays{display:grid;gap:8px}
-.pay{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;text-align:right}
+.pay{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;text-align:start}
 .pay.on{border-color:var(--plum)}
 .pay i{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none}
 .pay.on i{border:5px solid var(--plum)}
@@ -109,7 +109,7 @@ input,select,textarea{font:inherit;color:inherit}
 .done{text-align:center;padding:26px 18px}
 .done h3{font-family:var(--disp);font-size:26px;margin:10px 0 4px}
 .code{font-family:var(--disp);font-size:30px;letter-spacing:4px;color:var(--plum);direction:ltr}
-.steps{display:flex;flex-direction:column;gap:0;margin:18px 0;text-align:right}
+.steps{display:flex;flex-direction:column;gap:0;margin:18px 0;text-align:start}
 .step{display:flex;gap:12px;align-items:flex-start;padding-bottom:16px;position:relative}
 .step::before{content:'';position:absolute;right:8px;top:20px;bottom:0;width:2px;background:var(--line)}
 .step:last-child::before{display:none}
@@ -141,3 +141,4 @@ select.inp option{background:#141414}
 .off-k{display:inline-block;background:#1C1D2A;color:#F2C230;font-weight:800;font-size:12px;padding:3px 10px;border-radius:20px}
 .off-end{background:#ffffffb0;color:#1C1D2A;font-weight:800;font-size:13px;padding:6px 12px;border-radius:12px;white-space:nowrap}
 
+.ib.lang{font-weight:800;font-size:13px;font-family:inherit;color:var(--ink,#fff)}
