@@ -27,12 +27,16 @@
     bag: '<path d="M6 7h12l1 14H5z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    sun: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   };
   const icon = (n, s = 20) => svg(`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`);
   const bottle = (fill, color, w = 30) => {
-    const top = 14 + (1 - fill) * 30; const id = 'c' + Math.random().toString(36).slice(2, 7);
-    return svg(`<svg width="${w}" height="${w * 1.5}" viewBox="0 0 32 48" aria-hidden="true"><defs><clipPath id="${id}"><path d="M9 14c0-2 1.5-3.5 3.5-3.5h7c2 0 3.5 1.5 3.5 3.5v28c0 2.2-1.8 4-4 4h-6c-2.2 0-4-1.8-4-4z"/></clipPath></defs><rect x="12.5" y="2" width="7" height="5" rx="1.2" fill="${color}"/><rect x="13.5" y="7" width="5" height="3.5" fill="${color}" opacity=".45"/><g clip-path="url(#${id})"><rect class="liq" x="0" y="${top}" width="32" height="48" fill="${color}" opacity=".85"/></g><path d="M9 14c0-2 1.5-3.5 3.5-3.5h7c2 0 3.5 1.5 3.5 3.5v28c0 2.2-1.8 4-4 4h-6c-2.2 0-4-1.8-4-4z" fill="none" stroke="${color}" stroke-width="1.6"/><path d="M12 17v18" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".55"/></svg>`);
+    const top = 17 + (1 - Math.max(0, Math.min(1, fill))) * 26; const id = 'c' + Math.random().toString(36).slice(2, 7);
+    return svg(`<svg width="${w}" height="${w * 1.5}" viewBox="0 0 32 48" aria-hidden="true"><defs><clipPath id="${id}"><rect x="6.6" y="16.4" width="18.8" height="27.6" rx="4.2"/></clipPath></defs><path d="M11.2 1.2h9.6l1.3 8.6H9.9z" fill="${color}" opacity=".95"/><path d="M13.2 1.6h2.2l-.7 7.8h-2.4z" fill="#fff" opacity=".35"/><rect x="12" y="9.6" width="8" height="3.6" rx=".8" fill="${color}" opacity=".6"/><rect x="4.8" y="13.2" width="22.4" height="33" rx="6" fill="${color}" fill-opacity=".1" stroke="${color}" stroke-width="1.5"/><g clip-path="url(#${id})"><rect class="liq" x="0" y="${top}" width="32" height="40" fill="${color}" opacity=".8"/></g><rect x="8.6" y="18" width="2.2" height="20" rx="1.1" fill="#fff" opacity=".55"/><rect x="21.6" y="20" width="1.2" height="10" rx=".6" fill="#fff" opacity=".3"/></svg>`);
   };
+  // generic piece for item boxes (burners, sprays, bakhoor): a domed jar
+  const jar = (color, w = 30) => svg(`<svg width="${w}" height="${w * 1.5}" viewBox="0 0 32 48" aria-hidden="true"><path d="M16 3.5c1.4 0 2.2 1.6 1.4 3.2l-1.4 2.8-1.4-2.8c-.8-1.6 0-3.2 1.4-3.2z" fill="${color}"/><path d="M6.5 20c0-6 4.3-10.2 9.5-10.2S25.5 14 25.5 20z" fill="${color}" opacity=".9"/><rect x="5" y="19.6" width="22" height="3" rx="1.2" fill="${color}" opacity=".6"/><path d="M7.5 22.6h17l-1.6 15.6c-.2 1.8-1.7 3.2-3.5 3.2h-6.8c-1.8 0-3.3-1.4-3.5-3.2z" fill="${color}" fill-opacity=".14" stroke="${color}" stroke-width="1.5"/><rect x="9" y="41.4" width="14" height="3.4" rx="1.4" fill="${color}" opacity=".85"/><rect x="10.3" y="25" width="1.8" height="11" rx=".9" fill="#fff" opacity=".5"/></svg>`);
 
   // ---------------- data ----------------
   const api = {
@@ -119,12 +123,13 @@
     const root = $('#shop');
     root.replaceChildren(
       h('header', { class: 'bar' }, s.logo ? h('img', { class: 'lg', src: s.logo, alt: '' }) : null, h('b', null, s.name || 'المتجر'),
+        h('button', { class: 'ib', 'aria-label': 'فاتح / غامق', onclick: (e) => { const d = document.documentElement; const n = d.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; d.setAttribute('data-theme', n); try { localStorage.setItem('theme', n); } catch (er) {} e.currentTarget.replaceChildren(icon(n === 'dark' ? 'sun' : 'moon', 18)); } }, icon(document.documentElement.getAttribute('data-theme') === 'dark' ? 'sun' : 'moon', 18)),
         phone ? h('a', { class: 'ib', href: 'tel:' + phone, 'aria-label': 'اتصل بينا' }, icon('phone', 18)) : null,
         wa ? h('a', { class: 'ib', href: 'https://wa.me/' + wa, target: '_blank', rel: 'noopener', 'aria-label': 'واتساب' }, icon('wa', 18)) : null),
       h('section', { class: 'hero' }, h('h1', null, s.name || 'المتجر'), s.nameEn ? h('div', { class: 'en' }, s.nameEn) : null, s.slogan ? h('p', null, s.slogan) : null),
       s.open === false ? h('div', { class: 'closed' }, 'استقبال الطلبات واقف دلوقتي. تقدر تتفرج وتكلمنا على الأرقام اللي فوق.') : null,
-      h('div', { class: 'vials' }, list.map(([c, ct], i) => h('button', { class: 'vial', style: { '--c': ct.color || '#F2C230' }, onclick: () => jump(c) },
-        h('div', { class: 'tube' }, h('div', { class: 'liq', style: { '--h': '8%' }, 'data-h': [72, 58, 84, 46][i % 4] + '%' })), h('span', null, ct.n)))),
+      h('div', { class: 'cats' }, list.map(([c, ct], i) => h('button', { class: 'ctile', style: { '--c': ct.color || '#F2C230' }, onclick: () => jump(c) },
+        h('span', { class: 'cglyph' }, ct.mode === 'item' ? jar(ct.color || '#F2C230', 30) : bottle([0.78, 0.62, 0.9, 0.55][i % 4], ct.color || '#F2C230', 30)), h('span', { class: 'cn' }, ct.n), ct.en ? h('small', { dir: 'ltr' }, ct.en) : null))),
       offerSection(),
       featured.length ? h('div', { class: 'sec' }, h('h2', null, 'مختارات')) : null,
       featured.length ? h('div', { class: 'feat' }, featured.map(([pid, p]) => card(pid, p))) : null,
@@ -135,7 +140,6 @@
       }),
       footer(),
       cartBar());
-    requestAnimationFrame(() => setTimeout(() => document.querySelectorAll('.vial .liq').forEach((l) => l.style.setProperty('--h', l.dataset.h)), 60));
     // highlight chip of visible section
     const chips = document.querySelectorAll('.chip');
     if ('IntersectionObserver' in window) {
@@ -192,7 +196,7 @@
   function card(pid, p) {
     const c = p.c; const color = (cat(c) || {}).color || '#F2C230';
     const anyAvail = webSizes(c).some(([s]) => hasPrice(c, s, pid) && avail(c, s, pid) > 0);
-    const im = h('div', { class: 'im', 'data-p': pid }, bottle(0.65, color, 34), p.tag ? h('span', { class: 'tag' }, p.tag) : null);
+    const im = h('div', { class: 'im', 'data-p': pid }, isItem(c) ? jar(color, 36) : bottle(0.65, color, 34), p.tag ? h('span', { class: 'tag' }, p.tag) : null);
     if (p.img && io) io.observe(im); else img(pid, im);
     const ws = webSizes(c).filter(([s]) => hasPrice(c, s, pid)); const offS = ws.find(([s]) => onOffer(c, s, pid));
     const one = ws.length === 1 ? ws[0][0] : null;
@@ -226,7 +230,7 @@
     const p = prod(pid); const c = p.c; const color = (cat(c) || {}).color || '#F2C230';
     const szs = webSizes(c).filter(([s]) => hasPrice(c, s, pid));
     let sel = (szs.find(([s]) => avail(c, s, pid) > 0) || [])[0] || null; let q = 1;
-    const imBox = h('div', { class: 'sh-img', style: { '--c': color } }, bottle(0.7, color, 70));
+    const imBox = h('div', { class: 'sh-img', style: { '--c': color } }, isItem(c) ? jar(color, 74) : bottle(0.7, color, 70));
     img(pid, imBox, true);
     const sizesBox = h('div', { class: 'sizes', role: 'radiogroup', 'aria-label': 'الحجم' });
     const qtyB = h('b', { class: 'num' }, q);

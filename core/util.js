@@ -86,17 +86,20 @@
   };
 
   // ---------- signature glyph: bottle with liquid level ----------
+  // refined flacon: faceted cap, gold collar, thick glass body, liquid level = fill
   P.bottle = function (fill = 0.6, color = 'currentColor', size = 28, cls = '') {
     const f = Math.max(0, Math.min(1, fill));
-    const top = 14 + (1 - f) * 30; // liquid surface y inside body (14..44)
+    const top = 17 + (1 - f) * 26;
     const id = 'b' + Math.random().toString(36).slice(2, 8);
     return P.svg(`<svg class="bottle ${cls}" width="${size}" height="${size * 1.5}" viewBox="0 0 32 48" aria-hidden="true">
-      <defs><clipPath id="${id}"><path d="M9 14c0-2 1.5-3.5 3.5-3.5h7c2 0 3.5 1.5 3.5 3.5v28c0 2.2-1.8 4-4 4h-6c-2.2 0-4-1.8-4-4z"/></clipPath></defs>
-      <rect x="12.5" y="2" width="7" height="5" rx="1.2" fill="${color}" opacity=".9"/>
-      <rect x="13.5" y="7" width="5" height="3.5" fill="${color}" opacity=".45"/>
-      <g clip-path="url(#${id})"><rect class="liq" x="0" y="${top}" width="32" height="48" fill="${color}" opacity=".85"/></g>
-      <path d="M9 14c0-2 1.5-3.5 3.5-3.5h7c2 0 3.5 1.5 3.5 3.5v28c0 2.2-1.8 4-4 4h-6c-2.2 0-4-1.8-4-4z" fill="none" stroke="${color}" stroke-width="1.6"/>
-      <path d="M12 17v18" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".55"/>
+      <defs><clipPath id="${id}"><rect x="6.6" y="16.4" width="18.8" height="27.6" rx="4.2"/></clipPath></defs>
+      <path d="M11.2 1.2h9.6l1.3 8.6H9.9z" fill="${color}" opacity=".95"/>
+      <path d="M13.2 1.6h2.2l-.7 7.8h-2.4z" fill="#fff" opacity=".35"/>
+      <rect x="12" y="9.6" width="8" height="3.6" rx=".8" fill="${color}" opacity=".6"/>
+      <rect x="4.8" y="13.2" width="22.4" height="33" rx="6" fill="${color}" fill-opacity=".1" stroke="${color}" stroke-width="1.5"/>
+      <g clip-path="url(#${id})"><rect class="liq" x="0" y="${top}" width="32" height="40" fill="${color}" opacity=".8"/></g>
+      <rect x="8.6" y="18" width="2.2" height="20" rx="1.1" fill="#fff" opacity=".55"/>
+      <rect x="21.6" y="20" width="1.2" height="10" rx=".6" fill="#fff" opacity=".3"/>
     </svg>`);
   };
 
