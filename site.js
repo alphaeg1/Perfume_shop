@@ -180,16 +180,22 @@
     const imBox = h('div', { class: 'sh-img', style: { '--c': color } }, bottle(fill(c, sz), color, 70));
     img(id, imBox, true);
     const qtyB = h('b', { class: 'num' }, q); const btn = h('button', { class: 'cta' });
+    const askOil = ct.askOil !== false;
+    const oilIn = askOil ? h('input', { class: 'inp oil-ask', id: 'oil-ask', maxlength: 60, placeholder: 'اكتب اسم الريحة، مثلًا: سوفاج أو عود ملكي', autocomplete: 'off', oninput: (e) => e.target.classList.remove('need') }) : null;
+    const oilBox = askOil ? h('label', { class: 'oil-box' }, h('span', { class: 'lbl' }, 'نوع الزيت اللي عايزه'), oilIn, h('small', null, 'لو مش فاكر الاسم اكتب وصفها، والفرع هيكلمك يأكد معاك.')) : null;
     const draw = () => { qtyB.textContent = q; btn.disabled = a <= 0 || st.site.open === false; btn.textContent = st.site.open === false ? 'الطلبات واقفة دلوقتي' : a <= 0 ? 'خلص حالياً' : 'أضف للسلة — ' + money(price(c, sz) * q); };
     const sh = sheet(h('div', null, imBox, h('div', { class: 'sh-b' },
       h('h3', null, ct.n + ' ' + z.n), ct.en ? h('div', { dir: 'ltr', style: { textAlign: 'right', color: 'var(--muted)' } }, ct.en + ' ' + (z.ml ? z.ml + 'ml' : '')) : null,
       h('div', { class: 'big-price num' }, priceEl(c, sz)), onOffer(c, sz) ? h('div', { class: 'offline' }, (offerOf(c, sz).t || 'عرض لفترة محدودة')) : null,
+      oilBox,
       h('div', { class: 'row', style: { margin: '16px 0', justifyContent: 'space-between' } }, h('span', { class: 'lbl', style: { margin: 0 } }, 'الكمية'),
         h('div', { class: 'qty' }, h('button', { 'aria-label': 'قلل', onclick: () => { q = Math.max(1, q - 1); draw(); } }, '−'), qtyB, h('button', { 'aria-label': 'زود', onclick: () => { q = Math.min(20, q + 1); draw(); } }, '+'))),
       btn)));
     btn.onclick = () => {
-      const ex = st.cart.find((l) => !l.p && l.c === c && l.s === sz);
-      if (ex) ex.q += q; else st.cart.push({ p: null, c, s: sz, q, pr: price(c, sz), n: ct.n, sn: z.n });
+      const oil = oilIn ? oilIn.value.trim().replace(/\s+/g, ' ').slice(0, 60) : '';
+      if (oilIn && !oil) { oilIn.focus(); oilIn.classList.add('need'); toast('اكتب نوع الزيت اللي عايزه'); return; }
+      const ex = st.cart.find((l) => !l.p && l.c === c && l.s === sz && (l.oil || '') === oil);
+      if (ex) ex.q += q; else st.cart.push({ p: null, c, s: sz, q, pr: price(c, sz), n: ct.n, sn: z.n, ...(oil ? { oil } : {}) });
       save('cart', st.cart); refreshBar(); sh.close(); toast('اتضاف للسلة');
     };
     draw();
@@ -277,7 +283,7 @@
     const fee = () => num(((s.areas || {})[f.area.value] || {}).fee);
     const draw = () => {
       lines.replaceChildren(...(st.cart.length ? st.cart.map((l) => h('div', { class: 'line' }, bottle(fill(l.c, l.s), (cat(l.c) || {}).color || '#F2C230', 16),
-        h('div', { class: 't' }, h('b', null, l.n), h('small', null, l.sn + ' — ' + money(l.pr))),
+        h('div', { class: 't' }, h('b', null, l.n), h('small', null, l.sn + ' — ' + money(l.pr)), l.oil ? h('span', { class: 'oil-l' }, l.oil) : null),
         h('div', { class: 'qty' }, h('button', { 'aria-label': 'قلل', onclick: () => { l.q--; if (l.q <= 0) st.cart = st.cart.filter((x) => x !== l); save('cart', st.cart); draw(); refreshBar(); } }, '−'), h('b', { class: 'num' }, l.q),
           h('button', { 'aria-label': 'زود', onclick: () => { l.q++; save('cart', st.cart); draw(); refreshBar(); } }, '+')))) : [h('div', { class: 'empty' }, 'السلة فاضية')]));
       const sub = st.cart.reduce((a, l) => a + l.q * l.pr, 0);
@@ -306,7 +312,7 @@
       const area = f.area.value; const ar = (s.areas || {})[area] || {};
       const oid = rid();
       const order = { code: code(), ts: Date.now(), st: 'new', src: 'web', c: { n: name.slice(0, 80), ph, area: area || '', areaN: ar.n || '', addr: f.addr.value.trim().slice(0, 300), note: f.note.value.trim().slice(0, 300) },
-        items: st.cart.map((l) => ({ c: l.c, s: l.s, p: l.p, n: l.n, sn: l.sn, q: l.q, pr: l.pr })), sub, fee: fee(), tot: sub + fee(), pay };
+        items: st.cart.map((l) => ({ c: l.c, s: l.s, p: l.p, n: l.n, sn: l.sn, q: l.q, pr: l.pr, ...(l.oil ? { oil: l.oil } : {}) })), sub, fee: fee(), tot: sub + fee(), pay };
       save('me', { n: name, ph, area, addr: f.addr.value.trim() });
       try {
         let b = route(area);

@@ -142,3 +142,7 @@ select.inp option{background:#141414}
 .off-end{background:#ffffffb0;color:#1C1D2A;font-weight:800;font-size:13px;padding:6px 12px;border-radius:12px;white-space:nowrap}
 
 .ib.lang{font-weight:800;font-size:13px;font-family:inherit;color:var(--ink,#fff)}
+.oil-box{display:block;margin-top:14px}
+.oil-box small{display:block;color:var(--muted);font-size:12px;margin-top:6px}
+.oil-ask.need{border-color:#EF5A5A}
+.oil-l{display:block;margin-top:3px;font-size:12.5px;font-weight:700;color:var(--amber)}

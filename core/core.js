@@ -355,7 +355,7 @@
     completeOrder(b, oid, pay) {
       const o = S.get(`orders/open/${b}/${oid}`);
       if (!o) throw new Error('الطلب ده مش موجود');
-      const items = P.arr(o.items).map((it) => ({ c: it.c, s: it.s, p: it.p || null, q: it.q, pr: it.pr, n: it.n + (it.sn ? ' — ' + it.sn : '') }));
+      const items = P.arr(o.items).map((it) => ({ c: it.c, s: it.s, p: it.p || null, q: it.q, pr: it.pr, n: it.n + (it.sn ? ' — ' + it.sn : ''), ...(it.oil ? { oil: it.oil } : {}) }));
       const d = P.dayKey();
       const sale = A.sell({ b, items, disc: P.num(o.disc), pay: pay || 'cash', cust: { n: o.c && o.c.n, ph: o.c && o.c.ph }, src: 'web', oid, note: o.fee ? 'توصيل ' + o.fee : '' });
       const now = Date.now();

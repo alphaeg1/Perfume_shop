@@ -117,3 +117,33 @@ select.inp option{background:var(--card)}
 .chip.neg b{color:var(--err)} .chip.pos b{color:var(--ok)}
 .items .oil{margin-inline-start:6px;color:var(--warn);font-weight:700}
 .sellers{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+/* editing from the phone (main account) */
+.tgl{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:14px;font-weight:600}
+.tgl input{position:absolute;opacity:0;pointer-events:none}
+.tgl-ui{width:40px;height:24px;border-radius:24px;background:#C9C5BA;position:relative;transition:background .15s;flex:none}
+.tgl-ui::after{content:'';position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:right .15s}
+.tgl input:checked+.tgl-ui{background:var(--y)} .tgl input:checked+.tgl-ui::after{right:19px}
+.grid{display:grid;gap:10px}.g2{grid-template-columns:1fr 1fr}
+.sec-t{font-weight:800;font-size:14px;margin:12px 0 6px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}.tbl th{text-align:start;font-size:12px;color:var(--muted);font-weight:600;padding:6px 4px}.tbl td{padding:5px 4px;border-top:1px solid var(--line)}
+.tbl td .inp{padding:9px 10px}
+.thumb{width:52px;height:52px;border-radius:12px;object-fit:cover;background:var(--soft);display:inline-grid;place-items:center;flex:none;color:var(--muted)}
+.btn.sm{padding:8px 12px;font-size:13px}
+.muted{color:var(--muted)}.small{font-size:12px}
+.modal-foot .danger{background:var(--err);color:#fff;border-color:var(--err)}
+.modal-foot .ghost{background:transparent}
+.wrap{flex-wrap:wrap}
+.ed-hint{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+.prow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.prow:first-of-type{border-top:0}
+.prow .pn{flex:1;min-width:0}.prow .pn b{display:block}.prow .pn small{color:var(--muted)}
+.prow .pp{font-weight:800;font-size:17px;white-space:nowrap}
+.prow.off{opacity:.5}
+.ordb{display:flex;flex-direction:column;gap:2px}
+.ordb button{width:30px;height:24px;border:1px solid var(--line);background:var(--card);border-radius:8px;display:grid;place-items:center;color:var(--ink)}
+.ordb button:disabled{opacity:.25}
+.addb{width:100%;margin-top:10px}
+.sk.ed{cursor:pointer;position:relative}
+.sk.ed::after{content:'✎';position:absolute;top:4px;left:6px;font-size:10px;color:var(--muted)}
+.stk-big{font-size:40px;font-weight:800;text-align:center;margin:4px 0 12px}

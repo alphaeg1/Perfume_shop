@@ -3,7 +3,7 @@
   const P = window.P;
   const { h, S, FB, C } = P;
   const CFG = window.SHOP_CONFIG || {};
-  const M = { tab: 'today', mode: 'day', br: '', anchor: P.dayKey(), sbr: '', shd: P.dayKey(), shb: '' };
+  const M = { tab: 'today', mode: 'day', br: '', anchor: P.dayKey(), sbr: '', shd: P.dayKey(), shb: '', pc: '' };
   const root = () => P.$('#m');
   const THEME_KEY = 'theme';
   try { if (localStorage.getItem(THEME_KEY) === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
@@ -68,8 +68,8 @@
     const newN = open.filter((o) => o.st === 'new' || o.st === 'rej').length;
     const y = scrollY;
     root().replaceChildren(
-      M.tab === 'today' ? today() : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : M.tab === 'shifts' ? shifts() : stock(),
-      h('nav', { class: 'nav' }, [['today', 'النهارده', 'home'], ['shifts', 'الورديات', 'clock'], ['orders', 'الطلبات', 'truck'], ['rep', 'الجرد', 'chart'], ['stock', 'المخزون', 'box']].map(([k, l, ic]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },
+      M.tab === 'today' ? today() : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : M.tab === 'shifts' ? shifts() : M.tab === 'prices' && S.isOwner ? prices() : stock(),
+      h('nav', { class: 'nav', style: S.isOwner ? { gridTemplateColumns: 'repeat(6,1fr)' } : null }, [['today', 'النهارده', 'home'], ['shifts', 'الورديات', 'clock'], ['orders', 'الطلبات', 'truck'], ['rep', 'الجرد', 'chart'], ['stock', 'المخزون', 'box']].concat(S.isOwner ? [['prices', 'الأسعار', 'tag']] : []).map(([k, l, ic]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },
         h('span', { class: 'ni' }, P.icon(ic, 21), k === 'orders' && newN ? h('i', null, newN) : null), l))));
     scrollTo(0, y);
   }
@@ -217,6 +217,63 @@
   }
 
   /* ---------- stock ---------- */
+  /* ---------- main account: change stock from the phone ---------- */
+  function editStock(b, k) {
+    const cur = P.qty(b, k);
+    const add = P.input({ type: 'number', inputmode: 'numeric', min: 0, placeholder: 'كام قطعة دخلت؟' });
+    const set = P.input({ type: 'number', inputmode: 'numeric', min: 0, placeholder: 'العدد الصح دلوقتي' });
+    const note = P.input({ placeholder: 'ملاحظة (اختياري)' });
+    P.modal({
+      title: C.label(k), sub: P.branchName(b),
+      body: h('div', null, h('div', { class: 'stk-big num' }, cur), h('div', { class: 'ed-hint', style: { textAlign: 'center' } }, 'الموجود دلوقتي في السيستم'),
+        P.field('استلمت بضاعة (بيتزوّد على الموجود)', add), P.field('أو عدّيت بإيدك (بيتظبط على الرقم ده)', set), P.field('ملاحظة', note)),
+      actions: [{ label: 'حفظ', kind: 'primary', onClick: (close) => {
+        const q = Math.round(P.num(add.value)); const hasSet = set.value !== '';
+        if (!q && !hasSet) throw new Error('اكتب الكمية اللي دخلت أو العدد الصح');
+        if (q < 0) throw new Error('الكمية لازم تكون أكبر من صفر');
+        if (hasSet) P.A.adjust(b, k, set.value, note.value.trim() || 'تسوية من الموبايل');
+        else P.A.receive(b, [{ k, q }], note.value.trim() || 'استلام من الموبايل');
+        P.toast('المخزون اتعدّل'); close(); draw();
+      } }],
+    });
+  }
+
+  /* ---------- main account: sizes, prices, original items and photos ---------- */
+  function prices() {
+    const cats = C.cats(true);
+    if (!M.pc || !C.cat(M.pc)) M.pc = cats.length ? cats[0][0] : '';
+    const c = M.pc; const cat = C.cat(c) || {};
+    const byP = cat.mode === 'product' || cat.mode === 'item'; const isItem = cat.mode === 'item';
+    const sizes = C.sizes(c, true); const prods = C.prods(c, true);
+    const go = () => draw();
+    const move = (list, id, dir, pathOf) => { const ids = list.map(([x]) => x); const i = ids.indexOf(id); const j = i + dir; if (i < 0 || j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; const up = {}; ids.forEach((x, n) => { up[pathOf(x)] = n + 1; }); P.CatEdit.save(up); draw(); };
+    const ord = (list, id, pathOf) => { const i = list.findIndex(([x]) => x === id); return h('div', { class: 'ordb', onclick: (e) => e.stopPropagation() },
+      h('button', { 'aria-label': 'لفوق', disabled: i <= 0, onclick: () => move(list, id, -1, pathOf) }, P.icon('up', 14)),
+      h('button', { 'aria-label': 'لتحت', disabled: i >= list.length - 1, onclick: () => move(list, id, 1, pathOf) }, P.icon('down', 14))); };
+    const thumb = (id, v, fill) => { const t = h('span', { class: 'thumb' }, P.bottle ? P.bottle(fill || 0.6, C.color(c), 16) : ''); if (v) P.loadThumb(id, v, t); return t; };
+    return h('div', null,
+      head('الأحجام والأسعار', hero(cat.n || '', String(byP ? prods.length : sizes.length), h('span', null, byP ? 'صنف' : 'حجم'))),
+      h('div', { class: 'w' },
+        h('div', { class: 'bchips' }, cats.map(([id, ct]) => h('button', { class: id === c ? 'on' : '', onclick: () => { M.pc = id; draw(); } }, ct.n))),
+        h('div', { class: 'ed-hint' }, 'أي تغيير هنا بيوصل لكل الفروع والموقع في نفس اللحظة. دوس على أي سطر علشان تغيّر السعر أو الصورة، والأسهم للترتيب.'),
+        !c ? h('div', { class: 'card empty' }, 'مفيش خانات') : h('div', null,
+          isItem ? null : h('div', { class: 'card list' },
+            h('div', { class: 'grp-t' }, catDot(c), 'أحجام ' + cat.n),
+            sizes.length ? sizes.map(([s, sz]) => h('div', { class: 'prow' + (sz.on === false ? ' off' : ''), onclick: () => P.CatEdit.size(c, s, go) },
+              ord(sizes, s, (x) => `catalog/cats/${c}/sizes/${x}/ord`),
+              byP ? null : thumb(P.CatEdit.sizeImgId(c, s), sz.img, C.fill(c, s)),
+              h('div', { class: 'pn' }, h('b', null, sz.n), h('small', null, [sz.on === false ? 'مقفول' : '', !byP && sz.web === false ? 'مش ظاهر على الموقع' : ''].filter(Boolean).join(' · '))),
+              byP ? null : h('div', { class: 'pp num' }, C.hasPrice(c, s) ? P.fmt.money(sz.price) : h('span', { class: 'pill e' }, 'من غير سعر')))) : h('div', { class: 'empty' }, 'مفيش أحجام لسه'),
+            h('button', { class: 'btn lt addb', onclick: () => P.CatEdit.size(c, null, go) }, P.icon('plus', 16), 'حجم جديد')),
+          byP ? h('div', { class: 'card list' },
+            h('div', { class: 'grp-t' }, catDot(c), (isItem ? 'أصناف ' : 'منتجات ') + cat.n),
+            prods.length ? prods.map(([pid, p]) => h('div', { class: 'prow' + (p.on === false ? ' off' : ''), onclick: () => P.CatEdit.prod(c, pid, go) },
+              ord(prods, pid, (x) => `catalog/prods/${x}/ord`),
+              thumb(pid, p.img),
+              h('div', { class: 'pn' }, h('b', null, p.n), h('small', null, sizes.filter(([s]) => p.prices && p.prices[s] !== undefined && p.prices[s] !== '').map(([s, sz]) => (isItem ? '' : sz.n + ': ') + P.fmt.n(p.prices[s])).join(' · ') + (p.web === false ? ' · مش ظاهر على الموقع' : ''))))) : h('div', { class: 'empty' }, 'مفيش أصناف لسه'),
+            h('button', { class: 'btn lt addb', onclick: () => P.CatEdit.prod(c, null, go) }, P.icon('plus', 16), isItem ? 'صنف جديد' : 'منتج جديد')) : null)));
+  }
+
   function stock() {
     const bs = P.branches();
     const b = M.sbr || (bs[0] || [])[0];
@@ -232,7 +289,7 @@
         Object.entries(by).map(([c, ks]) => h('div', { class: 'card list' },
           h('div', { class: 'grp-t' }, catDot(c), (C.cat(c) || {}).n || ''),
           h('div', { class: 'stk' }, ks.map((kk) => { const q = P.num(st[kk]);
-            return h('div', { class: 'sk ' + (q <= 0 ? 'ze' : q <= lim ? 'lo' : '') }, h('span', null, short(kk)), h('b', { class: 'num' }, q)); }))))));
+            return h('div', { class: 'sk ' + (q <= 0 ? 'ze' : q <= lim ? 'lo' : '') + (S.isOwner ? ' ed' : ''), role: S.isOwner ? 'button' : null, tabindex: S.isOwner ? 0 : null, onclick: S.isOwner ? () => editStock(b, kk) : null }, h('span', null, short(kk)), h('b', { class: 'num' }, q)); }))))));
   }
   boot().catch((e) => { root().textContent = 'حصلت مشكلة: ' + e.message; });
 })();
