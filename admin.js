@@ -287,7 +287,7 @@
       h('div', { class: 'w' },
         h('div', { class: 'bchips' }, bs.map(([id, br]) => h('button', { class: id === b ? 'on' : '', onclick: () => { M.sbr = id; draw(); } }, br.n))),
         Object.entries(by).map(([c, ks]) => h('div', { class: 'card list' },
-          h('div', { class: 'grp-t' }, catDot(c), (C.cat(c) || {}).n || ''),
+          h('div', { class: 'grp-t' }, catDot(c), c === 'pool' ? 'أزايز الفرع — رصيد واحد لكل الزيوت' : (C.cat(c) || {}).n || ''),
           h('div', { class: 'stk' }, ks.map((kk) => { const q = P.num(st[kk]);
             return h('div', { class: 'sk ' + (q <= 0 ? 'ze' : q <= lim ? 'lo' : '') + (S.isOwner ? ' ed' : ''), role: S.isOwner ? 'button' : null, tabindex: S.isOwner ? 0 : null, onclick: S.isOwner ? () => editStock(b, kk) : null }, h('span', null, short(kk)), h('b', { class: 'num' }, q)); }))))));
   }

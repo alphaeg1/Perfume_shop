@@ -76,7 +76,13 @@
     isItem(c) { const cat = C.cat(c); return !!(cat && cat.mode === 'item'); },
     key(c, s, p) { return C.byProduct(c) && p ? `${c}|${s}|${p}` : `${c}|${s}`; },
     parse(k) { const [c, s, p] = String(k).split('|'); return { c, s, p: p || null }; },
+    // one shared bottle count per branch for the oil boxes (French, Gulf, shapes…); originals and items keep their own count
+    POOL: 'pool',
+    pooled(c) { const cat = C.cat(c); if (!cat) return false; if (cat.pool !== undefined) return cat.pool !== false; return (!cat.mode || cat.mode === 'size') && c !== 'own'; },
+    skey(k) { return k === 'pool' || C.pooled(C.parse(k).c) ? 'pool' : k; },
+    inCat(k, c) { return k === 'pool' ? C.pooled(c) : C.parse(k).c === c; },
     label(k, short) {
+      if (k === 'pool') return 'أزايز الفرع (لكل الزيوت والأحجام)';
       const { c, s, p } = C.parse(k);
       const cat = C.cat(c); const sz = C.size(c, s); const pr = p && C.prod(p);
       const parts = [];
@@ -85,8 +91,13 @@
       if (!(C.isItem(c) && pr)) parts.push(sz ? sz.n : 'حجم محذوف');
       return parts.join(' — ');
     },
-    // every stock line the business tracks
+    // every stock line the business tracks (the oil boxes share one line: 'pool')
     keys() {
+      const out = []; let pool = false;
+      for (const k of C.itemKeys()) { if (C.pooled(C.parse(k).c)) { if (!pool) { out.push('pool'); pool = true; } } else out.push(k); }
+      return out;
+    },
+    itemKeys() {
       const out = [];
       for (const [c] of C.cats(true)) for (const [s] of C.sizes(c, true)) {
         if (C.byProduct(c)) { for (const [p, pr] of C.prods(c, true)) if (pr.prices && pr.prices[s] !== undefined && pr.prices[s] !== '') out.push(`${c}|${s}|${p}`); }
@@ -94,7 +105,7 @@
       }
       return out;
     },
-    color(c) { const cat = C.cat(c); return (cat && cat.color) || '#6E5A68'; },
+    color(c) { if (c === 'pool') return '#F2C230'; const cat = C.cat(c); return (cat && cat.color) || '#9A968C'; },
     fill(c, s) { // relative bottle fill by ml inside its category
       const list = C.sizes(c, true).map(([, z]) => P.num(z.ml)).filter(Boolean);
       const ml = P.num((C.size(c, s) || {}).ml);
@@ -161,12 +172,14 @@
     if (memo.stock[b]) return memo.stock[b];
     const st = {};
     eachDay((d, bb, node) => {
-      for (const m of P.arr(node.m)) if (m && m.k) st[m.k] = (st[m.k] || 0) + P.num(m.q);
+      for (const m of P.arr(node.m)) if (m && m.k) { const k = C.skey(m.k); st[k] = (st[k] || 0) + P.num(m.q); }
       for (const sale of P.arr(node.s)) {
         if (!sale || sale.void) continue;
-        for (const it of P.itemsOf(sale)) st[it.k] = (st[it.k] || 0) - P.num(it.q);
+        for (const it of P.itemsOf(sale)) { const k = C.skey(it.k); st[k] = (st[k] || 0) - P.num(it.q); }
       }
     }, null, null, [b]);
+    // every size of a shared-bottle box reads the branch bottle count
+    for (const k of C.itemKeys()) if (C.pooled(C.parse(k).c)) st[k] = st.pool || 0;
     memo.stock[b] = st;
     return st;
   };
@@ -453,13 +466,13 @@
         const before = d < from;
         for (const m of P.arr(node.m)) {
           if (!m || !m.k) continue;
-          const x = row(m.k); const q = P.num(m.q);
+          const x = row(C.skey(m.k)); const q = P.num(m.q);
           if (before) { x.open += q; continue; }
           if (m.t === 'in' || m.t === 'init') x.inn += q; else if (m.t === 'tin') x.tin += q; else if (m.t === 'tout') x.tout += q; else x.adj += q;
         }
         for (const s of P.arr(node.s)) {
           if (!s || s.void) continue;
-          for (const it of P.itemsOf(s)) { const x = row(it.k); if (before) x.open -= P.num(it.q); else x.sold += P.num(it.q); }
+          for (const it of P.itemsOf(s)) { const x = row(C.skey(it.k)); if (before) x.open -= P.num(it.q); else x.sold += P.num(it.q); }
         }
       }, null, to, branches);
       for (const k of C.keys()) row(k);
@@ -488,6 +501,7 @@
     },
   });
   function keySort(a, b) {
+    if (a === 'pool' || b === 'pool') return a === b ? 0 : a === 'pool' ? -1 : 1;
     const pa = C.parse(a), pb = C.parse(b);
     const co = (c) => P.num((C.cat(c) || {}).ord), so = (c, s) => P.num((C.size(c, s) || {}).ord);
     return (co(pa.c) - co(pb.c)) || String(pa.c).localeCompare(pb.c) || (so(pa.c, pa.s) - so(pb.c, pb.s)) || String(pa.p || '').localeCompare(pb.p || '');
