@@ -96,7 +96,7 @@
     return h('div', null,
       head(P.fmt.day(d), hero('مبيعات النهارده في كل الفروع', money(r.rev), h('span', null, r.inv + ' فاتورة'), h('span', null, r.bottles + ' قطعة'), trend(pct(r.rev, ry.rev)), ry.rev ? h('span', { class: 'o' }, 'عن امبارح') : null)),
       h('div', { class: 'w' },
-        h('div', { class: 'kp' }, kpi('متوسط الفاتورة', money(r.avg)), kpi('طلبات الموقع', r.web, r.webRev ? P.fmt.money(r.webRev) : null), kpi('كاش', money(r.pay.cash || 0)), kpi('محافظ وفيزا', money((r.pay.wallet || 0) + (r.pay.card || 0)))),
+        h('div', { class: 'kp' }, kpi('متوسط الفاتورة', money(r.avg)), kpi('طلبات الموقع', r.web, r.webRev ? P.fmt.money(r.webRev) : null), kpi('كاش', money(r.pay.cash || 0)), kpi('محافظ وفيزا', money((r.pay.wallet || 0) + (r.pay.card || 0))), kpi('مصاريف', money(r.exp), r.expN ? r.expN + ' مصروف' : null), kpi('الكاش بعد المصاريف', money(r.cashNet))),
         low || liveOffers ? h('div', { class: 'alerts' },
           low ? h('button', { class: 'al warn', onclick: () => { M.tab = 'stock'; scrollTo(0, 0); draw(); } }, P.icon('box', 17), h('span', null, h('b', null, low + ' صنف'), ' قرب يخلص في الفروع'), h('span', { class: 'go' }, '‹')) : null,
           liveOffers ? h('div', { class: 'al' }, P.icon('tag', 17), h('span', null, h('b', null, liveOffers + ' عرض'), ' شغال دلوقتي على الكاشير والموقع')) : null) : null,
@@ -151,13 +151,14 @@
         h('div', { class: 'seg' }, [['day', 'يومي'], ['month', 'شهري'], ['year', 'سنوي']].map(([v, l]) => h('button', { class: M.mode === v ? 'on' : '', onclick: () => { M.mode = v; M.anchor = P.dayKey(); draw(); } }, l))),
         h('div', { class: 'dnav' }, h('button', { class: 'ib b', 'aria-label': 'اللي قبله', onclick: () => step(-1) }, '›'), h('b', null, label), h('button', { class: 'ib b', 'aria-label': 'اللي بعده', onclick: () => step(1) }, '‹')),
         P.select([['', 'كل الفروع']].concat(P.branches().map(([b, br]) => [b, br.n])), M.br, { class: 'inp', style: { marginBottom: '12px' }, onchange: (e) => { M.br = e.target.value; draw(); } }),
-        h('div', { class: 'kp' }, kpi('متوسط الفاتورة', money(r.avg)), kpi('طلبات الموقع', r.web, r.webRev ? P.fmt.money(r.webRev) : null), S.isOwner ? kpi('ربح تقريبي', money(r.profit)) : kpi('خصومات', money(r.disc)), kpi('فواتير ملغية', r.voided)),
+        h('div', { class: 'kp' }, kpi('متوسط الفاتورة', money(r.avg)), kpi('طلبات الموقع', r.web, r.webRev ? P.fmt.money(r.webRev) : null), S.isOwner ? kpi('ربح بعد المصاريف', money(r.net)) : kpi('خصومات', money(r.disc)), kpi('المصاريف', money(r.exp), r.expN ? r.expN + ' مصروف' : null)),
         sec('اتباع إيه'),
         h('div', { class: 'card list' }, cats.length ? cats.map((g) => h('div', { class: 'cgrp' },
           h('div', { class: 'br' }, h('b', null, catDot(g.c), g.cat.n), money(g.x.rev)),
           h('div', { class: 'bar' }, h('i', { style: { width: Math.round((g.x.rev / maxC) * 100) + '%', background: C.color(g.c) } })),
           h('div', { class: 'chips' }, Object.entries(g.x.sizes || {}).filter(([, v]) => v.q).map(([s, v]) => h('span', { class: 'chip' }, h('span', null, (C.size(g.c, s) || {}).n || ''), h('b', { class: 'num' }, '×' + v.q)))))) : h('div', { class: 'empty' }, 'مفيش مبيعات في الفترة دي')),
         Object.keys(r.byUser).length ? h('div', null, sec('مبيعات كل بياع'), h('div', { class: 'card list' }, Object.values(r.byUser).sort((x, y) => y.rev - x.rev).map((u) => h('div', { class: 'br row-line' }, h('div', null, h('b', null, u.n), h('div', { class: 'mut' }, (M.br ? '' : P.branchName(u.b) + ' · ') + u.inv + ' فاتورة · ' + u.bottles + ' قطعة')), money(u.rev))))) : null,
+        (() => { const ex = P.R.expenses(from, to, branches).filter((e) => !e.void); return ex.length ? h('div', null, sec('المصاريف', money(r.exp)), h('div', { class: 'card list' }, ex.slice(0, 80).map((e) => h('div', { class: 'br row-line' }, h('div', null, h('b', null, e.r), h('div', { class: 'mut' }, (M.br ? '' : P.branchName(e.b) + ' · ') + (M.mode === 'day' ? P.fmt.time(e.ts) : P.fmt.dt(e.ts)) + (P.sellerOf(e) ? ' · ' + P.sellerOf(e) : '') + (e.note ? ' · ' + e.note : ''))), money(e.amt))))) : null; })(),
         !M.br && P.branches().length > 1 ? h('div', null, sec('الفروع'), h('div', { class: 'card list' }, P.branches().map(([b, br]) => { const x = r.byBranch[b] || { rev: 0, bottles: 0, inv: 0 }; return h('div', { class: 'br row-line' }, h('div', null, h('b', null, br.n), h('div', { class: 'mut' }, x.inv + ' فاتورة · ' + x.bottles + ' قطعة')), money(x.rev)); }))) : null,
         sec('جرد المخزون'),
         Object.keys(invBy).length ? Object.entries(invBy).map(([c, rows]) => h('div', { class: 'card list' },
@@ -190,11 +191,12 @@
             h('div', { class: 'br' }, h('b', null, h('span', { class: 'dot' + (on ? ' on' : '') }), br.n), list.length ? (lastClose ? h('span', { class: 'pill' }, 'مقفول') : h('span', { class: 'pill ok' }, 'فاتح')) : h('span', { class: 'pill e' }, 'مفتحش')),
             list.length ? h('div', { class: 'kp sh-kp' },
               kpi('فتح الساعة', P.fmt.time(first)),
-              kpi('قفل الساعة', lastClose ? P.fmt.time(lastClose) : 'لسه فاتح')) : h('div', { class: 'mut' }, d === P.dayKey() ? 'لسه محدش فتح وردية النهارده' : 'مفيش ورديات اليوم ده'),
+              kpi('قفل الساعة', lastClose ? P.fmt.time(lastClose) : 'لسه فاتح'),
+              kpi('مصاريف اليوم', money(P.R.expenses(d, d, [b]).filter((e) => !e.void).reduce((x, e) => x + P.num(e.amt), 0)))) : h('div', { class: 'mut' }, d === P.dayKey() ? 'لسه محدش فتح وردية النهارده' : 'مفيش ورديات اليوم ده'),
             list.map((sh) => {
-              const live = P.A.shiftSummary({ ...sh }); const sum = live.inv || live.voided || !sh.sum ? live : { ...sh.sum, bySeller: sh.sum.bySeller || {} };
+              const live = P.A.shiftSummary({ ...sh }); const sum = live.inv || live.voided || live.expN || !sh.sum ? live : { ...sh.sum, bySeller: sh.sum.bySeller || {} };
               const cash = P.num((sum.pay || {}).cash);
-              const expected = P.num(sh.cash0) + cash;
+              const expected = P.num(sh.cash0) + cash - P.num(sum.exp);
               const diff = sh.close ? P.num(sh.cash1) - expected : null;
               return h('div', { class: 'shift' },
                 h('div', { class: 'br' }, h('div', null, h('b', null, sh.pn || sh.n || sh.u || 'موظف'), sh.pn && sh.n ? h('span', { class: 'mut' }, ' · حساب ' + sh.n) : null), money(sum.tot)),
@@ -203,6 +205,7 @@
                   h('span', { class: 'chip' }, h('span', null, 'فواتير'), h('b', { class: 'num' }, sum.inv)),
                   h('span', { class: 'chip' }, h('span', null, 'قطع'), h('b', { class: 'num' }, P.num(sum.bottles || sum.items))),
                   h('span', { class: 'chip' }, h('span', null, 'كاش أول الوردية'), h('b', { class: 'num' }, P.fmt.n(sh.cash0))),
+                  sum.exp ? h('span', { class: 'chip neg' }, h('span', null, 'مصاريف'), h('b', { class: 'num' }, P.fmt.n(sum.exp))) : null,
                   h('span', { class: 'chip' }, h('span', null, 'المفروض في الدرج'), h('b', { class: 'num' }, P.fmt.n(expected))),
                   sh.close ? h('span', { class: 'chip' }, h('span', null, 'اتعد في الدرج'), h('b', { class: 'num' }, P.fmt.n(sh.cash1))) : null,
                   diff ? h('span', { class: 'chip ' + (diff < 0 ? 'neg' : 'pos') }, h('span', null, diff < 0 ? 'عجز' : 'زيادة'), h('b', { class: 'num' }, P.fmt.n(Math.abs(diff)))) : null,

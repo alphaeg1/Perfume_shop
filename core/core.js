@@ -112,6 +112,8 @@
   P.normPh = (x) => { let d = String(x || '').replace(/[٠-٩]/g, (ch) => '٠١٢٣٤٥٦٧٨٩'.indexOf(ch)).replace(/\D/g, ''); if (d.startsWith('0020')) d = d.slice(2); if (d.startsWith('20') && d.length === 12) d = '0' + d.slice(2); if (d.length === 10 && d[0] === '1') d = '0' + d; return d; };
   // sellers: names of the people working at a branch (no account / password needed)
   P.people = (b) => Object.entries((b && S.get(`branches/${b}/ppl`)) || {}).filter(([, p]) => p && p.n && !p.off).sort((x, y) => (P.num(x[1].ord) - P.num(y[1].ord)) || String(x[1].n).localeCompare(String(y[1].n), 'ar'));
+  P.EXP_SUGGEST = ['أكل وشرب', 'شاي وقهوة', 'مواصلات', 'نظافة', 'كهرباء', 'مياه', 'إنترنت', 'شحن', 'أكياس وتغليف', 'صيانة', 'سلفة', 'إيجار'];
+  P.expNames = () => { const f = {}; P.eachDay((d, b, n) => { for (const e of Object.values(n.e || {})) if (e && e.r) f[e.r] = (f[e.r] || 0) + 1; }); return Object.keys(f).sort((a, b) => f[b] - f[a]).concat(P.EXP_SUGGEST.filter((x) => !f[x])).slice(0, 60); };
   P.sellerOf = (s) => (s && (s.spn || s.bn)) || '';
   P.itemText = (it) => P.num(it.q) + '× ' + (it.n || '') + (it.oil ? ' (' + it.oil + ')' : '');
   // every purchase of a phone number: local copy first, then the shared cloud index (other branches)
@@ -268,9 +270,10 @@
       return sh;
     },
     shiftSummary(sh) {
-      const out = { inv: 0, tot: 0, bottles: 0, disc: 0, pay: {}, voided: 0, web: 0, bySeller: {} };
+      const out = { inv: 0, tot: 0, bottles: 0, disc: 0, pay: {}, voided: 0, web: 0, bySeller: {}, exp: 0, expN: 0 };
       if (!sh) return out;
       eachDay((d, b, node) => {
+        for (const e of Object.values(node.e || {})) { if (e && !e.void && e.sh === sh.id) { out.exp += P.num(e.amt); out.expN++; } }
         for (const s of P.arr(node.s)) {
           if (!s || s.sh !== sh.id) continue;
           if (s.void) { out.voided++; continue; }
@@ -282,6 +285,49 @@
         }
       }, sh.d || null, null, [sh.b]);
       return out;
+    },
+    // ---------- expenses (paid from the branch drawer) ----------
+    addExpense({ b, amt, r, note = '', sp = null }) {
+      amt = Math.round(P.num(amt) * 100) / 100;
+      r = String(r || '').trim().slice(0, 80);
+      if (!(amt > 0)) throw new Error('اكتب المبلغ');
+      if (!r) throw new Error('اكتب المصروف ده على إيه');
+      const d = P.dayKey(); const id = P.uid();
+      const e = { id, ts: Date.now(), d, b, amt, r, ...who(), sh: (A.myShift() || {}).id || null };
+      if (note) e.note = String(note).trim().slice(0, 200);
+      if (sp && sp.id && sp.n) { e.sp = sp.id; e.spn = String(sp.n).slice(0, 40); }
+      const up = { [`day/${d}/${b}/e/${id}`]: e };
+      S.stampUp(up, b, d);
+      S.write(up, 'مصروف ' + amt);
+      return e;
+    },
+    voidExpense(d, b, id) {
+      const up = { [`day/${d}/${b}/e/${id}/void`]: { ts: Date.now(), by: S.me.uid, n: S.me.n || '' } };
+      S.stampUp(up, b, d);
+      S.write(up, 'إلغاء مصروف');
+    },
+    // owner: wipe all activity (sales, stock moves, shifts, expenses, web orders, customers) — keeps branches, accounts, products, prices
+    async resetActivity() {
+      if (!S.isOwner) throw new Error('الحساب الرئيسي بس');
+      const ts = Date.now();
+      const roots = ['day', 'days', 'orders', 'track', 'cust'];
+      try {
+        const up = { 'rev/reset': ts }; for (const r of roots) up[r] = null;
+        await P.FB.patch('', up);
+      } catch (e) {
+        if (e.net) throw new Error('لازم يكون فيه نت علشان المسح');
+        // older rules: delete record by record (each one the owner is allowed to write)
+        const keys = async (p) => Object.keys((await P.FB.get(p, { shallow: 'true' }).catch(() => null)) || {});
+        const up = {};
+        for (const d of await keys('day')) for (const b of await keys(`day/${d}`)) for (const t of ['s', 'm', 'h', 'o', 'e']) for (const id of await keys(`day/${d}/${b}/${t}`)) up[`day/${d}/${b}/${t}/${id}`] = null;
+        for (const b of await keys('days')) for (const d of await keys(`days/${b}`)) up[`days/${b}/${d}`] = null;
+        for (const b of await keys('orders/open')) for (const id of await keys(`orders/open/${b}`)) up[`orders/open/${b}/${id}`] = null;
+        const paths = Object.keys(up);
+        for (let i = 0; i < paths.length; i += 400) { const part = {}; paths.slice(i, i + 400).forEach((k) => (part[k] = null)); await P.FB.patch('', part); }
+        await P.FB.patch('', { 'rev/reset': ts });
+      }
+      await S.wipeActivity(ts);
+      return ts;
     },
     async closeShift(cash1, note) {
       const sh = A.myShift();
@@ -358,9 +404,15 @@
     summary(from, to, branches) {
       const r = {
         rev: 0, sub: 0, disc: 0, inv: 0, bottles: 0, voided: 0, voidedTot: 0, web: 0, webRev: 0, cost: 0,
-        pay: {}, byKey: {}, byCat: {}, byBranch: {}, byDay: {}, byMonth: {}, byUser: {}, byProd: {}, byHour: {}, sales: [],
+        pay: {}, byKey: {}, byCat: {}, byBranch: {}, byDay: {}, byMonth: {}, byUser: {}, byProd: {}, byHour: {}, sales: [], exp: 0, expN: 0, expBy: {},
       };
       eachDay((d, b, node) => {
+        for (const e of Object.values(node.e || {})) {
+          if (!e || e.void) continue;
+          const a = P.num(e.amt); r.exp += a; r.expN++;
+          const k = String(e.r || '').trim() || '—'; r.expBy[k] = (r.expBy[k] || 0) + a;
+          const be = (r.byBranch[b] = r.byBranch[b] || { rev: 0, inv: 0, bottles: 0, web: 0 }); be.exp = (be.exp || 0) + a;
+        }
         for (const sid of Object.keys(node.s || {})) {
           const s = node.s[sid]; if (!s) continue;
           if (s.void) { r.voided++; r.voidedTot += P.num(s.tot); r.sales.push({ ...s, id: sid, b, d }); continue; }
@@ -388,6 +440,8 @@
       }, from, to, branches);
       r.avg = r.inv ? r.rev / r.inv : 0;
       r.profit = r.rev - r.cost;
+      r.net = r.profit - r.exp;
+      r.cashNet = P.num(r.pay.cash) - r.exp;
       r.sales.sort((a, b) => b.ts - a.ts);
       return r;
     },
@@ -411,6 +465,11 @@
       for (const k of C.keys()) row(k);
       for (const k in rows) { const x = rows[k]; x.close = x.open + x.inn + x.tin + x.tout + x.adj - x.sold; }
       return Object.values(rows).sort((a, b) => keySort(a.k, b.k));
+    },
+    expenses(from, to, branches) {
+      const out = [];
+      eachDay((d, b, node) => { for (const id of Object.keys(node.e || {})) { const e = node.e[id]; if (e && e.ts) out.push({ ...e, id, d, b }); } }, from, to, branches);
+      return out.sort((a, b) => b.ts - a.ts);
     },
     shifts(from, to, branches) {
       const out = [];

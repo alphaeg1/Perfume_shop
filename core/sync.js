@@ -53,6 +53,21 @@
       this.revSeen = (await P.kv.get(`RV:${this.scope}`)) || {};
       this.st.pending = this.outbox.length;
     },
+    // after "start fresh": drop cached sales/stock/shifts/expenses/orders/customers and anything queued before the reset
+    async wipeActivity(ts) {
+      const roots = ['day', 'days', 'orders', 'track', 'cust'];
+      for (const r of roots) delete this.L[r];
+      const pref = `L:${this.scope}:`;
+      for (const k of await P.kv.keys()) { const s = String(k); if (s.startsWith(pref) && roots.includes(s.slice(pref.length).split('/')[0])) await P.kv.del(k).catch(() => {}); }
+      this.outbox = this.outbox.filter((it) => it.ts > ts || !Object.keys(it.up || {}).some((p) => roots.includes(P.split(p)[0])));
+      this.failed = [];
+      await this.saveOutbox();
+      this.stamps = {}; await P.kv.set(`ST:${this.scope}`, {}).catch(() => {});
+      this.revSeen.reset = ts; await P.kv.set(`RV:${this.scope}`, this.revSeen).catch(() => {});
+      await P.kv.del(`shift:${this.me && this.me.uid}`).catch(() => {});
+      this._shift = null;
+      setTimeout(() => location.reload(), 300);
+    },
     saveOutbox() { this.st.pending = this.outbox.length; return P.kv.set(`OB:${this.scope}`, this.outbox).catch(() => {}); },
     saveStamps: P.debounce(() => P.kv.set(`ST:${S.scope}`, S.stamps).catch(() => {}), 400),
 
@@ -228,6 +243,11 @@
     onRev() {
       const rev = this.get('rev') || {};
       const owner = this.seesAll;
+      if (rev.reset && rev.reset !== this.revSeen.reset && !this._wiping) {
+        const hadData = this.revSeen.reset !== undefined || Object.keys(this.L.days || {}).length || Object.keys(this.L.day || {}).length;
+        if (hadData) { this._wiping = true; this.wipeActivity(rev.reset); return; }
+        this.revSeen.reset = rev.reset; P.kv.set(`RV:${this.scope}`, this.revSeen).catch(() => {});
+      }
       const map = {
         cat: ['catalog'],
         br: ['branches'],
