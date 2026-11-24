@@ -58,13 +58,13 @@
 
     // ---------------- writes ----------------
     // updates: { 'path/a': value, 'path/b': null } — applied here at once, sent to the cloud when possible
-    write(updates, label) {
+    write(updates, label, opts) {
       const up = {};
       for (const k in updates) up[P.split(k).join('/')] = updates[k] === undefined ? null : P.clone(updates[k]);
       for (const k in up) P.setAt(this.L, k, up[k]), this.dirty.add(this.chunkOf(k));
       this.ver++;
       this.saveSoon(); this.emit();
-      const it = { id: P.uid(), up, ts: Date.now(), label: label || '' };
+      const it = { id: P.uid(), up, ts: Date.now(), label: label || '', ...(opts && opts.silent ? { silent: true } : {}) };
       this.outbox.push(it);
       this.saveOutbox();
       this.flush();
@@ -101,7 +101,7 @@
             this.outbox.shift();
             await this.saveOutbox();
             this.failed.push({ ...it, err: e.message, at: Date.now() });
-            P.toast('السيرفر رفض عملية: ' + (it.label || 'تعديل') + ' — ' + e.message, 'err', 7000);
+            if (!it.silent) P.toast('السيرفر رفض عملية: ' + (it.label || 'تعديل') + ' — ' + e.message, 'err', 7000);
             this.refetchFor(it.up);
           }
         }

@@ -107,6 +107,36 @@
   P.branchName = (b) => (b === '_inbox' ? 'لسه متوزعش' : ((S.get(`branches/${b}`) || {}).n || 'فرع محذوف'));
   P.myBranches = () => (S.seesAll ? P.branches().map(([id]) => id) : [S.me.b]);
 
+  // ---------------- customers ----------------
+  // one shape for every phone number: 01xxxxxxxxx
+  P.normPh = (x) => { let d = String(x || '').replace(/[٠-٩]/g, (ch) => '٠١٢٣٤٥٦٧٨٩'.indexOf(ch)).replace(/\D/g, ''); if (d.startsWith('0020')) d = d.slice(2); if (d.startsWith('20') && d.length === 12) d = '0' + d.slice(2); if (d.length === 10 && d[0] === '1') d = '0' + d; return d; };
+  // sellers: names of the people working at a branch (no account / password needed)
+  P.people = (b) => Object.entries((b && S.get(`branches/${b}/ppl`)) || {}).filter(([, p]) => p && p.n && !p.off).sort((x, y) => (P.num(x[1].ord) - P.num(y[1].ord)) || String(x[1].n).localeCompare(String(y[1].n), 'ar'));
+  P.sellerOf = (s) => (s && (s.spn || s.bn)) || '';
+  P.itemText = (it) => P.num(it.q) + '× ' + (it.n || '') + (it.oil ? ' (' + it.oil + ')' : '');
+  // every purchase of a phone number: local copy first, then the shared cloud index (other branches)
+  P.custSales = async function (phone) {
+    const ph = P.normPh(phone); const map = {};
+    if (ph.length < 10) return [];
+    eachDay((d, b, node) => {
+      for (const id of Object.keys(node.s || {})) {
+        const s = node.s[id];
+        if (s && s.cust && P.normPh(s.cust.ph) === ph) map[id] = { id, ts: s.ts, d, b, no: s.no, tot: s.tot, cn: s.cust.n || '', items: P.itemsOf(s), void: !!s.void, src: s.src };
+      }
+    });
+    try {
+      const cloud = (await P.FB.get(`cust/${ph}`)) || {};
+      for (const id of Object.keys(cloud)) { const x = cloud[id]; if (x && !map[id]) map[id] = { id, ...x, items: P.arr(x.items), void: !!x.void }; }
+    } catch (e) { /* offline or not allowed: local copy is enough */ }
+    return Object.values(map).sort((a, b) => b.ts - a.ts);
+  };
+  // the scent names already typed before, most used first (for quick picking at the cashier)
+  P.oilNames = function () {
+    const n = {};
+    eachDay((d, b, node) => { for (const s of P.arr(node.s)) for (const it of P.itemsOf(s)) if (it.oil) n[it.oil] = (n[it.oil] || 0) + P.num(it.q || 1); });
+    return Object.keys(n).sort((a, b) => n[b] - n[a]).slice(0, 400);
+  };
+
   // ---------------- data walkers ----------------
   function eachDay(fn, from, to, branches) {
     const day = S.get('day') || {};
@@ -145,14 +175,16 @@
   const who = () => ({ by: S.me.uid, bu: S.me.u || '', bn: S.me.n || '' });
   const A = (P.A = {
     // items: [{c,s,p,q,pr,n}] -> sale
-    sell({ b, items, disc = 0, pay = 'cash', cust = null, src = 'pos', oid = null, note = '' }) {
+    sell({ b, items, disc = 0, pay = 'cash', cust = null, src = 'pos', oid = null, note = '', sp = null }) {
       if (!items.length) throw new Error('الفاتورة فاضية');
       const d = P.dayKey();
       const id = P.uid();
-      const its = items.map((it) => ({
-        k: C.key(it.c, it.s, it.p), c: it.c, s: it.s, p: it.p || null,
-        n: it.n || C.label(C.key(it.c, it.s, it.p)), q: P.num(it.q), pr: P.num(it.pr),
-      }));
+      const its = items.map((it) => {
+        const o = { k: C.key(it.c, it.s, it.p), c: it.c, s: it.s, p: it.p || null, n: it.n || C.label(C.key(it.c, it.s, it.p)), q: P.num(it.q), pr: P.num(it.pr) };
+        const oil = String(it.oil || '').trim().slice(0, 60);
+        if (oil) o.oil = oil;
+        return o;
+      });
       const sub = its.reduce((a, it) => a + it.q * it.pr, 0);
       disc = Math.max(0, Math.min(P.num(disc), sub));
       const br = S.get(`branches/${b}`) || {};
@@ -162,16 +194,24 @@
       };
       if (cust && (cust.n || cust.ph)) sale.cust = cust;
       if (oid) sale.oid = oid;
+      if (sp && sp.id && sp.n) { sale.sp = sp.id; sale.spn = String(sp.n).slice(0, 40); }
       if (note) sale.note = note;
       const up = { [`day/${d}/${b}/s/${id}`]: sale };
       S.stampUp(up, b, d);
       S.write(up, 'فاتورة ' + sale.no);
+      // customer index: lets any branch look up what this phone number bought before
+      const ph = P.normPh(cust && cust.ph);
+      if (ph.length >= 10) {
+        S.write({ [`cust/${ph}/${id}`]: { ts: sale.ts, d, b, no: sale.no, tot: sale.tot, cn: (cust.n || '').slice(0, 60), items: its.map((x) => ({ c: x.c, s: x.s, p: x.p, n: x.n, q: x.q, pr: x.pr, ...(x.oil ? { oil: x.oil } : {}) })) } }, 'سجل العميل', { silent: true });
+      }
       return sale;
     },
     voidSale(b, d, sid, reason) {
       const up = { [`day/${d}/${b}/s/${sid}/void`]: { ts: Date.now(), ...who(), r: reason || '' } };
       S.stampUp(up, b, d);
       S.write(up, 'إلغاء فاتورة');
+      const sv = S.get(`day/${d}/${b}/s/${sid}`); const vph = P.normPh(sv && sv.cust && sv.cust.ph);
+      if (vph.length >= 10) S.write({ [`cust/${vph}/${sid}/void`]: true }, 'سجل العميل', { silent: true });
     },
     move(b, k, q, t, note, extra) {
       q = Math.round(P.num(q));
@@ -216,9 +256,10 @@
         if (sh && sh.close) { S._shift = null; await P.kv.del(`shift:${S.me.uid}`); }
       }
     },
-    async openShift(b, cash0) {
+    async openShift(b, cash0, pn) {
       const d = P.dayKey(); const id = P.uid();
       const sh = { id, uid: S.me.uid, u: S.me.u || '', n: S.me.n || '', b, open: Date.now(), cash0: P.num(cash0) };
+      if (pn) sh.pn = String(pn).slice(0, 40);
       const up = { [`day/${d}/${b}/h/${id}`]: sh };
       S.stampUp(up, b, d);
       S.write(up, 'فتح شيفت');
@@ -227,7 +268,7 @@
       return sh;
     },
     shiftSummary(sh) {
-      const out = { inv: 0, tot: 0, bottles: 0, disc: 0, pay: {}, voided: 0, web: 0 };
+      const out = { inv: 0, tot: 0, bottles: 0, disc: 0, pay: {}, voided: 0, web: 0, bySeller: {} };
       if (!sh) return out;
       eachDay((d, b, node) => {
         for (const s of P.arr(node.s)) {
@@ -236,6 +277,7 @@
           out.inv++; out.tot += P.num(s.tot); out.disc += P.num(s.disc);
           out.pay[s.pay] = (out.pay[s.pay] || 0) + P.num(s.tot);
           if (s.src === 'web') out.web++;
+          const sn = P.sellerOf(s) || '—'; const sx = (out.bySeller[sn] = out.bySeller[sn] || { inv: 0, tot: 0 }); sx.inv++; sx.tot += P.num(s.tot);
           for (const it of P.itemsOf(s)) out.bottles += P.num(it.q);
         }
       }, sh.d || null, null, [sh.b]);
@@ -331,7 +373,7 @@
           bb.rev += tot; bb.inv++; if (s.src === 'web') bb.web++;
           const dd = (r.byDay[d] = r.byDay[d] || { rev: 0, inv: 0, bottles: 0 }); dd.rev += tot; dd.inv++;
           const mk = d.slice(0, 7); const mm = (r.byMonth[mk] = r.byMonth[mk] || { rev: 0, inv: 0, bottles: 0 }); mm.rev += tot; mm.inv++;
-          const uk = s.bu || s.by || '?'; const uu = (r.byUser[uk] = r.byUser[uk] || { n: s.bn || uk, rev: 0, inv: 0, bottles: 0, b }); uu.rev += tot; uu.inv++;
+          const uk = s.sp ? b + ':' + s.sp : s.bu || s.by || '?'; const uu = (r.byUser[uk] = r.byUser[uk] || { n: P.sellerOf(s) || s.bu || 'غير محدد', rev: 0, inv: 0, bottles: 0, b }); uu.rev += tot; uu.inv++;
           const hr = new Date(s.ts).getHours(); r.byHour[hr] = (r.byHour[hr] || 0) + tot;
           for (const it of P.itemsOf(s)) {
             const q = P.num(it.q); const lr = q * P.num(it.pr) * ratio;

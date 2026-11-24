@@ -3,7 +3,7 @@
   const P = window.P;
   const { h, S, FB, C } = P;
   const CFG = window.SHOP_CONFIG || {};
-  const M = { tab: 'today', mode: 'day', br: '', anchor: P.dayKey(), sbr: '' };
+  const M = { tab: 'today', mode: 'day', br: '', anchor: P.dayKey(), sbr: '', shd: P.dayKey(), shb: '' };
   const root = () => P.$('#m');
   const THEME_KEY = 'theme';
   try { if (localStorage.getItem(THEME_KEY) === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
@@ -59,7 +59,7 @@
   const sec = (t, extra) => h('div', { class: 'h' }, h('span', null, t), extra || null);
   const nameOf = (it) => (it.k && C.cat(C.parse(it.k).c) ? C.label(it.k).split(' — ').join(' ') : (it.n || '') + (it.sn ? ' ' + it.sn : ''));
   const short = (k) => { const parts = C.label(k).split(' — '); return parts.length > 1 ? parts.slice(1).join(' ') : parts[0]; };
-  const itemsList = (items) => h('div', { class: 'items' }, P.arr(items).map((it) => h('div', { class: 'it' }, h('span', { class: 'q num' }, '×' + P.num(it.q)), h('span', null, nameOf(it)))));
+  const itemsList = (items) => h('div', { class: 'items' }, P.arr(items).map((it) => h('div', { class: 'it' }, h('span', { class: 'q num' }, '×' + P.num(it.q)), h('span', null, nameOf(it)), it.oil ? h('b', { class: 'oil' }, it.oil) : null)));
   const catDot = (c) => h('i', { class: 'cd', style: { background: C.color(c) } });
 
   function draw() {
@@ -68,8 +68,8 @@
     const newN = open.filter((o) => o.st === 'new' || o.st === 'rej').length;
     const y = scrollY;
     root().replaceChildren(
-      M.tab === 'today' ? today() : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : stock(),
-      h('nav', { class: 'nav' }, [['today', 'النهارده', 'home'], ['orders', 'الطلبات', 'truck'], ['rep', 'الجرد', 'chart'], ['stock', 'المخزون', 'box']].map(([k, l, ic]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },
+      M.tab === 'today' ? today() : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : M.tab === 'shifts' ? shifts() : stock(),
+      h('nav', { class: 'nav' }, [['today', 'النهارده', 'home'], ['shifts', 'الورديات', 'clock'], ['orders', 'الطلبات', 'truck'], ['rep', 'الجرد', 'chart'], ['stock', 'المخزون', 'box']].map(([k, l, ic]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },
         h('span', { class: 'ni' }, P.icon(ic, 21), k === 'orders' && newN ? h('i', null, newN) : null), l))));
     scrollTo(0, y);
   }
@@ -111,7 +111,7 @@
         }) : h('div', { class: 'empty' }, 'مفيش فروع')),
         sec('آخر المبيعات', r.sales.length ? h('small', { class: 'mut' }, r.sales.length + ' فاتورة') : null),
         h('div', { class: 'card list' }, r.sales.length ? r.sales.slice(0, 25).map((s) => h('div', { class: 'sale' + (s.void ? ' void' : '') },
-          h('div', { class: 'br' }, h('div', { class: 'meta' }, catDot((P.itemsOf(s)[0] || {}).c), h('b', null, P.branchName(s.b)), h('span', { class: 'mut' }, P.fmt.time(s.ts) + (s.bn ? ' · ' + s.bn : ''))), s.void ? h('span', { class: 'pill e' }, 'اتلغت') : money(s.tot)),
+          h('div', { class: 'br' }, h('div', { class: 'meta' }, catDot((P.itemsOf(s)[0] || {}).c), h('b', null, P.branchName(s.b)), h('span', { class: 'mut' }, P.fmt.time(s.ts) + (P.sellerOf(s) ? ' · ' + P.sellerOf(s) : ''))), s.void ? h('span', { class: 'pill e' }, 'اتلغت') : money(s.tot)),
           itemsList(P.itemsOf(s)),
           s.src === 'web' ? h('span', { class: 'pill' }, 'طلب موقع') : null)) : h('div', { class: 'empty' }, 'لسه مفيش مبيعات النهارده'))));
   }
@@ -157,12 +157,60 @@
           h('div', { class: 'br' }, h('b', null, catDot(g.c), g.cat.n), money(g.x.rev)),
           h('div', { class: 'bar' }, h('i', { style: { width: Math.round((g.x.rev / maxC) * 100) + '%', background: C.color(g.c) } })),
           h('div', { class: 'chips' }, Object.entries(g.x.sizes || {}).filter(([, v]) => v.q).map(([s, v]) => h('span', { class: 'chip' }, h('span', null, (C.size(g.c, s) || {}).n || ''), h('b', { class: 'num' }, '×' + v.q)))))) : h('div', { class: 'empty' }, 'مفيش مبيعات في الفترة دي')),
+        Object.keys(r.byUser).length ? h('div', null, sec('مبيعات كل بياع'), h('div', { class: 'card list' }, Object.values(r.byUser).sort((x, y) => y.rev - x.rev).map((u) => h('div', { class: 'br row-line' }, h('div', null, h('b', null, u.n), h('div', { class: 'mut' }, (M.br ? '' : P.branchName(u.b) + ' · ') + u.inv + ' فاتورة · ' + u.bottles + ' قطعة')), money(u.rev))))) : null,
         !M.br && P.branches().length > 1 ? h('div', null, sec('الفروع'), h('div', { class: 'card list' }, P.branches().map(([b, br]) => { const x = r.byBranch[b] || { rev: 0, bottles: 0, inv: 0 }; return h('div', { class: 'br row-line' }, h('div', null, h('b', null, br.n), h('div', { class: 'mut' }, x.inv + ' فاتورة · ' + x.bottles + ' قطعة')), money(x.rev)); }))) : null,
         sec('جرد المخزون'),
         Object.keys(invBy).length ? Object.entries(invBy).map(([c, rows]) => h('div', { class: 'card list' },
           h('div', { class: 'grp-t' }, catDot(c), (C.cat(c) || {}).n || ''),
           h('div', { class: 'inv-h' }, h('span', null, 'الصنف'), h('span', null, 'أول'), h('span', null, 'وارد'), h('span', null, 'مباع'), h('span', null, 'آخر')),
           rows.map((x) => h('div', { class: 'inv-r' }, h('span', null, short(x.k)), h('span', { class: 'num' }, x.open), h('span', { class: 'num' }, x.inn + x.tin + x.tout + x.adj), h('span', { class: 'num' }, x.sold), h('b', { class: 'num' }, x.close))))) : h('div', { class: 'card empty' }, 'مفيش حركة مخزون')));
+  }
+
+  /* ---------- shifts: when each branch opened / closed, who worked, cash ---------- */
+  function shifts() {
+    const d = M.shd;
+    const all = P.R.shifts(d, d, M.shb ? [M.shb] : null).sort((x, y) => x.open - y.open);
+    const pres = S.get('presence') || {};
+    const brs = P.branches().filter(([b]) => !M.shb || b === M.shb);
+    const openNow = all.filter((sh) => !sh.close).length;
+    const step = (n) => { M.shd = P.addDays(M.shd, n); draw(); };
+    const unit = (n, one, two, few) => (n === 2 ? two : n >= 3 && n <= 10 ? few : one);
+    const dur = (a, b) => { const m = Math.max(0, Math.round((b - a) / 60000)); const hh = Math.floor(m / 60); const mm = m % 60; const hs = hh ? (hh === 2 ? unit(hh, 'ساعة', 'ساعتان', 'ساعات') : hh + ' ' + unit(hh, 'ساعة', 'ساعتان', 'ساعات')) : ''; const ms = mm ? (mm === 2 ? 'دقيقتان' : mm + ' ' + unit(mm, 'دقيقة', 'دقيقتان', 'دقائق')) : ''; return hs && ms ? hs + ' ' + ms : hs || ms || '0 دقيقة'; };
+    return h('div', null,
+      head('الورديات', hero(P.fmt.day(d), String(all.length), h('span', null, 'عدد الورديات'), openNow ? h('span', { class: 'o' }, openNow + ' شغالة دلوقتي') : null)),
+      h('div', { class: 'w' },
+        h('div', { class: 'dnav' }, h('button', { class: 'ib b', 'aria-label': 'اليوم اللي قبله', onclick: () => step(-1) }, '›'), h('b', null, P.fmt.day(d)), h('button', { class: 'ib b', 'aria-label': 'اليوم اللي بعده', disabled: d >= P.dayKey(), onclick: () => step(1) }, '‹')),
+        P.select([['', 'كل الفروع']].concat(P.branches().map(([b, br]) => [b, br.n])), M.shb, { class: 'inp', style: { marginBottom: '12px' }, onchange: (e) => { M.shb = e.target.value; draw(); } }),
+        brs.length ? brs.map(([b, br]) => {
+          const list = all.filter((sh) => sh.b === b);
+          const first = list.length ? Math.min(...list.map((sh) => sh.open)) : null;
+          const lastClose = list.length && list.every((sh) => sh.close) ? Math.max(...list.map((sh) => sh.close)) : null;
+          const on = Object.values(pres).some((p) => p && p.b === b && Date.now() - p.ts < 150000);
+          return h('div', { class: 'card list' },
+            h('div', { class: 'br' }, h('b', null, h('span', { class: 'dot' + (on ? ' on' : '') }), br.n), list.length ? (lastClose ? h('span', { class: 'pill' }, 'مقفول') : h('span', { class: 'pill ok' }, 'فاتح')) : h('span', { class: 'pill e' }, 'مفتحش')),
+            list.length ? h('div', { class: 'kp sh-kp' },
+              kpi('فتح الساعة', P.fmt.time(first)),
+              kpi('قفل الساعة', lastClose ? P.fmt.time(lastClose) : 'لسه فاتح')) : h('div', { class: 'mut' }, d === P.dayKey() ? 'لسه محدش فتح وردية النهارده' : 'مفيش ورديات اليوم ده'),
+            list.map((sh) => {
+              const live = P.A.shiftSummary({ ...sh }); const sum = live.inv || live.voided || !sh.sum ? live : { ...sh.sum, bySeller: sh.sum.bySeller || {} };
+              const cash = P.num((sum.pay || {}).cash);
+              const expected = P.num(sh.cash0) + cash;
+              const diff = sh.close ? P.num(sh.cash1) - expected : null;
+              return h('div', { class: 'shift' },
+                h('div', { class: 'br' }, h('div', null, h('b', null, sh.pn || sh.n || sh.u || 'موظف'), sh.pn && sh.n ? h('span', { class: 'mut' }, ' · حساب ' + sh.n) : null), money(sum.tot)),
+                h('div', { class: 'mut' }, 'من ' + P.fmt.time(sh.open) + ' لـ ' + (sh.close ? P.fmt.time(sh.close) : 'دلوقتي') + ' · ' + dur(sh.open, sh.close || Date.now())),
+                h('div', { class: 'chips' },
+                  h('span', { class: 'chip' }, h('span', null, 'فواتير'), h('b', { class: 'num' }, sum.inv)),
+                  h('span', { class: 'chip' }, h('span', null, 'قطع'), h('b', { class: 'num' }, P.num(sum.bottles || sum.items))),
+                  h('span', { class: 'chip' }, h('span', null, 'كاش أول الوردية'), h('b', { class: 'num' }, P.fmt.n(sh.cash0))),
+                  h('span', { class: 'chip' }, h('span', null, 'المفروض في الدرج'), h('b', { class: 'num' }, P.fmt.n(expected))),
+                  sh.close ? h('span', { class: 'chip' }, h('span', null, 'اتعد في الدرج'), h('b', { class: 'num' }, P.fmt.n(sh.cash1))) : null,
+                  diff ? h('span', { class: 'chip ' + (diff < 0 ? 'neg' : 'pos') }, h('span', null, diff < 0 ? 'عجز' : 'زيادة'), h('b', { class: 'num' }, P.fmt.n(Math.abs(diff)))) : null,
+                  sum.voided ? h('span', { class: 'chip neg' }, h('span', null, 'فواتير ملغية'), h('b', { class: 'num' }, sum.voided)) : null),
+                Object.keys(sum.bySeller || {}).length > 1 || (Object.keys(sum.bySeller || {})[0] && Object.keys(sum.bySeller)[0] !== (sh.pn || sh.n)) ? h('div', { class: 'sellers' }, h('span', { class: 'mut' }, 'مبيعات كل بياع:'), Object.entries(sum.bySeller).sort((x, y) => y[1].tot - x[1].tot).map(([n, x]) => h('span', { class: 'chip' }, h('span', null, n), h('b', { class: 'num' }, P.fmt.n(x.tot)), h('small', null, ' (' + x.inv + ')')))) : null,
+                sh.note ? h('div', { class: 'mut' }, 'ملاحظة: ' + sh.note) : null);
+            }));
+        }) : h('div', { class: 'card empty' }, 'مفيش فروع')));
   }
 
   /* ---------- stock ---------- */
