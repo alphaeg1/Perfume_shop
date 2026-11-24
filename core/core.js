@@ -76,9 +76,9 @@
     isItem(c) { const cat = C.cat(c); return !!(cat && cat.mode === 'item'); },
     key(c, s, p) { return C.byProduct(c) && p ? `${c}|${s}|${p}` : `${c}|${s}`; },
     parse(k) { const [c, s, p] = String(k).split('|'); return { c, s, p: p || null }; },
-    // one shared bottle count per branch for the oil boxes (French, Gulf, shapes…); originals and items keep their own count
+    // one shared bottle count per branch for every box except the customer's own bottle and originals
     POOL: 'pool',
-    pooled(c) { const cat = C.cat(c); if (!cat) return false; if (cat.pool !== undefined) return cat.pool !== false; return (!cat.mode || cat.mode === 'size') && c !== 'own'; },
+    pooled(c) { const cat = C.cat(c); if (!cat) return false; if (cat.pool !== undefined) return cat.pool !== false; return c !== 'own' && c !== 'or' && !/أوريجينال|اوريجينال|أصلي|original/i.test((cat.n || '') + ' ' + (cat.en || '')); },
     skey(k) { return k === 'pool' || C.pooled(C.parse(k).c) ? 'pool' : k; },
     inCat(k, c) { return k === 'pool' ? C.pooled(c) : C.parse(k).c === c; },
     label(k, short) {
