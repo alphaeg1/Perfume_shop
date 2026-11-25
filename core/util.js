@@ -278,6 +278,37 @@
 (function () { // theme: light by default, remembered per device
   const P = window.P; let t = 'light'; try { t = localStorage.getItem('theme') || 'light'; } catch (e) {}
   document.documentElement.setAttribute('data-theme', t);
+  P.UIZ = {
+    get() { try { return localStorage.getItem('ui:zoom') || 'auto'; } catch (e) { return 'auto'; } },
+    auto() { return Math.max(0.7, Math.min(1, Math.min(window.innerWidth / 1366, window.innerHeight / 700))); },
+    val() { const v = this.get(); return v === 'auto' ? this.auto() : Math.max(0.6, Math.min(1.5, parseFloat(v) || 1)); },
+    apply() {
+      const z = Math.round(this.val() * 100) / 100; const r = document.documentElement.style;
+      r.setProperty('--uiz', z); r.setProperty('--vh', (window.innerHeight / z) + 'px'); r.setProperty('--vw', (window.innerWidth / z) + 'px');
+    },
+    set(v) { try { localStorage.setItem('ui:zoom', String(v)); } catch (e) {} this.apply(); },
+  };
+  P.UIZ.apply();
+  window.addEventListener('resize', () => P.UIZ.apply());
+  // the control: − / slider / +, plus quick sizes and "fit my screen"
+  P.zoomControl = () => {
+    const val = P.h('span', { class: 'zval num' });
+    const rng = P.h('input', { type: 'range', min: 60, max: 150, step: 5, 'aria-label': 'حجم الشاشة' });
+    const pre = P.h('div', { class: 'zpre' });
+    const paint = () => {
+      const auto = P.UIZ.get() === 'auto'; const pct = Math.round(P.UIZ.val() * 100);
+      val.textContent = pct + '%'; rng.value = pct;
+      pre.replaceChildren(...[['auto', 'على قد الشاشة'], [80, '80%'], [90, '90%'], [100, '100%'], [110, '110%'], [125, '125%']].map(([v, t]) => P.h('button', { type: 'button', class: (v === 'auto' ? auto : !auto && pct === v) ? 'on' : '', onclick: () => { P.UIZ.set(v === 'auto' ? 'auto' : v / 100); paint(); } }, t)));
+    };
+    const step = (d) => { P.UIZ.set(Math.max(60, Math.min(150, Math.round(P.UIZ.val() * 100) + d)) / 100); paint(); };
+    rng.addEventListener('input', () => { P.UIZ.set(rng.value / 100); paint(); });
+    paint();
+    return P.h('div', { class: 'zoom-ctl' },
+      P.h('div', { class: 'zrow' }, P.h('button', { type: 'button', class: 'zbtn', 'aria-label': 'صغّر', onclick: () => step(-5) }, '−'), rng, P.h('button', { type: 'button', class: 'zbtn', 'aria-label': 'كبّر', onclick: () => step(5) }, '+'), val),
+      pre,
+      P.h('div', { class: 'small muted' }, 'بيكبّر ويصغّر كل حاجة في الشاشة مع بعض. الإعداد ده للجهاز ده بس، وكل جهاز يظبط حجمه لوحده.'));
+  };
+  P.zoomBtn = () => P.h('button', { class: 'theme-btn', id: 'zoom-btn', title: 'حجم الشاشة', 'aria-label': 'حجم الشاشة', onclick: () => P.modal({ title: 'حجم الشاشة', sub: 'كبّر أو صغّر كل حاجة في الشاشة مرة واحدة', body: P.zoomControl(), actions: [{ label: 'تمام', kind: 'primary', onClick: (close) => close(true) }] }) }, P.h('span', { style: { fontWeight: '800', fontSize: '13px', letterSpacing: '-.5px' } }, 'A±'));
   P.themeBtn = () => { const b = P.h('button', { class: 'theme-btn', title: 'تغيير الشكل فاتح / غامق' }); const paint = () => { const d = document.documentElement.getAttribute('data-theme') === 'dark'; b.replaceChildren(P.icon(d ? 'sun' : 'moon', 18)); };
     b.onclick = () => { const d = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', d); try { localStorage.setItem('theme', d); } catch (e) {} paint(); }; paint(); return b; };
 })();
