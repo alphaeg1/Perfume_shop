@@ -31,7 +31,7 @@
         const s = await FB.signIn(email, pw.value);
         const prof = await FB.get(`users/${s.uid}`);
         if (!prof || prof.off) throw new Error('الحساب ده مش متاح');
-        if (prof.role !== 'owner' && prof.role !== 'viewer') throw new Error('الصفحة دي للحساب الرئيسي وحسابات المتابعة بس');
+        if (prof.role !== 'owner' && prof.role !== 'viewer' && prof.role !== 'catalog') throw new Error('الصفحة دي للحساب الرئيسي وحسابات المتابعة والأسعار بس');
         const me = { ...prof, uid: s.uid };
         await P.kv.set('m:sess', me); await P.kv.set('m:tok', FB.sess);
         enter(me);
@@ -67,6 +67,8 @@
     const open = P.openOrders();
     const newN = open.filter((o) => o.st === 'new' || o.st === 'rej').length;
     const y = scrollY;
+    // products & prices account: only the prices screen
+    if (S.isCatalog) { root().replaceChildren(prices(), h('nav', { class: 'nav', style: { gridTemplateColumns: '1fr' } }, h('button', { class: 'on' }, P.icon('tag', 20), h('span', null, 'الأسعار والمنتجات')))); scrollTo(0, y); return; }
     root().replaceChildren(
       M.tab === 'today' ? today() : M.tab === 'orders' ? orders(open) : M.tab === 'rep' ? reports() : M.tab === 'shifts' ? shifts() : M.tab === 'prices' && S.isOwner ? prices() : stock(),
       h('nav', { class: 'nav', style: S.isOwner ? { gridTemplateColumns: 'repeat(6,1fr)' } : null }, [['today', 'النهارده', 'home'], ['shifts', 'الورديات', 'clock'], ['orders', 'الطلبات', 'truck'], ['rep', 'الجرد', 'chart'], ['stock', 'المخزون', 'box']].concat(S.isOwner ? [['prices', 'الأسعار', 'tag']] : []).map(([k, l, ic]) => h('button', { class: M.tab === k ? 'on' : '', onclick: () => { M.tab = k; scrollTo(0, 0); draw(); } },

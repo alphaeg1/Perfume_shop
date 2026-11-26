@@ -47,7 +47,7 @@
         title: s ? 'تعديل ' + cat.n + ' ' + sz.n : 'حجم جديد في ' + cat.n, wide: !byP,
         body: h('div', null,
           h('div', { class: 'grid g2' }, P.field('السعة بالمللي', f.ml), P.field('الاسم اللي بيظهر', f.n)),
-          h('div', { class: 'grid g2' }, byP ? null : P.field('سعر البيع (موحّد في كل الفروع)', f.price, 'ممكن تسيبه فاضي دلوقتي وتحطه بعدين'), P.field('تكلفة الازازة (بتظهر لك انت بس)', f.cost, 'علشان صافي الربح في التقارير')),
+          h('div', { class: 'grid g2' }, byP ? null : P.field('سعر البيع (موحّد في كل الفروع)', f.price, 'ممكن تسيبه فاضي دلوقتي وتحطه بعدين'), S.isOwner ? P.field('تكلفة الازازة (بتظهر لك انت بس)', f.cost, 'علشان صافي الربح في التقارير') : null),
           photo ? P.field('صورة للموقع', photo.box) : null,
           h('div', { class: 'row gap wrap', style: { gap: '22px' } }, P.toggle(f.on, (v) => (f.on = v), 'شغال في الفروع'), byP ? null : P.toggle(f.web, (v) => (f.web = v), 'ظاهر على الموقع'))),
         actions: [
@@ -59,8 +59,7 @@
             const base = `catalog/cats/${c}/sizes/${id}`;
             const up = { [`${base}/n`]: name, [`${base}/ml`]: P.num(f.ml.value), [`${base}/price`]: byP ? 0 : (f.price.value === '' ? '' : P.num(f.price.value)), [`${base}/on`]: f.on, [`${base}/web`]: f.web };
             if (!s) up[`${base}/ord`] = Math.max(0, ...C.sizes(c, true).map(([, z]) => P.num(z.ord))) + 1;
-            up[`costs/${c}/${id}`] = f.cost.value === '' ? null : P.num(f.cost.value);
-            up['rev/cost'] = Date.now();
+            if (S.isOwner) { up[`costs/${c}/${id}`] = f.cost.value === '' ? null : P.num(f.cost.value); up['rev/cost'] = Date.now(); }
             if (photo && photo.st.img) { const v = Date.now(); up[`${base}/img`] = v; up[`public/img/${sizeImgId(c, id)}`] = { v, ...photo.st.img }; imgCache[sizeImgId(c, id) + ':' + v] = Promise.resolve(photo.st.img.t); }
             saveCat(up); P.toast('اتحفظ'); close(); done && done();
           } }].filter(Boolean),
@@ -82,9 +81,9 @@
       P.modal({
         title: pid ? 'تعديل ' + p.n : 'إضافة صنف في ' + (C.cat(c) || {}).n, wide: true,
         body: h('div', null, P.field('اسم المنتج', f.n), P.field('صورة للموقع', photo.box),
-          isItem ? h('div', { class: 'grid g2' }, P.field('سعر البيع', f.prices[0][1]), P.field('التكلفة (ليك انت بس)', f.costs[0][1])) : h('div', null, h('div', { class: 'sec-t' }, 'السعر لكل حجم (سيبه فاضي لو الحجم ده مش موجود)'),
-          h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, 'الحجم'), h('th', null, 'سعر البيع'), h('th', null, 'التكلفة (ليك انت بس)'))),
-            h('tbody', null, sizes.map(([s, sz], i) => h('tr', null, h('td', null, sz.n), h('td', null, f.prices[i][1]), h('td', null, f.costs[i][1])))))),
+          isItem ? h('div', { class: 'grid g2' }, P.field('سعر البيع', f.prices[0][1]), S.isOwner ? P.field('التكلفة (ليك انت بس)', f.costs[0][1]) : null) : h('div', null, h('div', { class: 'sec-t' }, 'السعر لكل حجم (سيبه فاضي لو الحجم ده مش موجود)'),
+          h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, 'الحجم'), h('th', null, 'سعر البيع'), S.isOwner ? h('th', null, 'التكلفة (ليك انت بس)') : null)),
+            h('tbody', null, sizes.map(([s, sz], i) => h('tr', null, h('td', null, sz.n), h('td', null, f.prices[i][1]), S.isOwner ? h('td', null, f.costs[i][1]) : null))))),
           h('div', { class: 'row gap wrap', style: { gap: '22px', marginTop: '12px' } }, P.toggle(f.on, (v) => (f.on = v), 'متاح في الفروع'), P.toggle(f.web, (v) => (f.web = v), 'ظاهر على الموقع'))),
         actions: [
           pid ? { label: 'حذف المنتج', kind: 'ghost', onClick: async (close) => { if (!(await P.confirm('حذف المنتج', 'هيتشال من الفروع والموقع.', 'احذف', true))) return; saveCat({ [`catalog/prods/${pid}`]: null, [`public/img/${pid}`]: null }); close(); done && done(); } } : null,
@@ -98,7 +97,7 @@
             if (photo.st.img) { const v = Date.now(); prod.img = v; up[`public/img/${id}`] = { v, ...photo.st.img }; imgCache[id + ':' + v] = Promise.resolve(photo.st.img.t); }
             up[`catalog/prods/${id}`] = prod;
             const costs = {}; f.costs.forEach(([s, inp]) => { if (inp.value !== '') costs[s] = P.num(inp.value); });
-            up[`costs/p/${id}`] = Object.keys(costs).length ? costs : null; up['rev/cost'] = Date.now();
+            if (S.isOwner) { up[`costs/p/${id}`] = Object.keys(costs).length ? costs : null; up['rev/cost'] = Date.now(); }
             saveCat(up); P.toast('اتحفظ'); close(); done && done();
           } }].filter(Boolean),
       });

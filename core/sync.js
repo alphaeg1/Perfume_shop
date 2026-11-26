@@ -21,6 +21,7 @@
     on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
     emit: P.debounce(() => { for (const fn of S.listeners) { try { fn(); } catch (e) { console.error(e); } } }, 120),
     get isOwner() { return !!(this.me && this.me.role === 'owner'); },
+    get isCatalog() { return !!(this.me && this.me.role === 'catalog'); },
     get seesAll() { return !!(this.me && (this.me.role === 'owner' || this.me.role === 'viewer')); },
 
     chunkOf(path) {
@@ -178,12 +179,21 @@
       this.me = me;
       const cf = P.FB.cfg || {};
       const ns = cf.demo ? 'demo' : 'db' + Array.from(String(cf.dbUrl || '')).reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36);
-      this.scope = ns + '_' + (me.role === 'owner' ? 'all' : me.role === 'viewer' ? 'view' : 'b_' + me.b);
+      this.scope = ns + '_' + (me.role === 'owner' ? 'all' : me.role === 'viewer' ? 'view' : me.role === 'catalog' ? 'cat' : 'b_' + me.b);
       // drop caches left by the old unscoped versions (they mixed demo numbers with real ones)
       if (!(await P.kv.get('cacheV2'))) { for (const k of await P.kv.keys()) { if (/^(L|OB|ST|RV):(all|view|b_)/.test(String(k))) await P.kv.del(k).catch(() => {}); } await P.kv.set('cacheV2', 1); }
       await this.loadCache();
       this.today = P.dayKey();
       this.emit();
+      if (me.role === 'catalog') {
+        // products & prices account: catalog, branches and site settings only — no sales, stock or orders
+        this.ready = Promise.all(['meta', 'catalog', 'branches', `users/${me.uid}`, 'public/site'].map((p) => this.pull(p).catch((e) => { if (e.net) this.netDown(); }))).then(() => this.emit());
+        this.stream('rev', () => this.onRev());
+        this.timers.push(setInterval(() => { if (this.outbox.length) this.flush(); }, 20000));
+        window.addEventListener('online', this._onl = () => { this.flush(); this.streams.forEach((s) => s.h.reconnect()); });
+        this.flush();
+        return;
+      }
       const owner = me.role !== 'staff';
       const b = me.b;
 
@@ -210,7 +220,7 @@
       this.flush();
     },
     ensureOrders() {
-      if (!this.me) return;
+      if (!this.me || this.me.role === 'catalog') return;
       const owner = this.seesAll;
       const want = owner || P.can('web_orders');
       if (want && !this.ordersRec) this.ordersRec = this.stream(owner ? 'orders/open' : `orders/open/${this.me.b}`);
